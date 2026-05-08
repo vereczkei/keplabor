@@ -371,13 +371,24 @@ export default function App() {
           <BeforeAfterBlock mobile />
         </section>
 
-        <section className="hidden lg:grid lg:grid-cols-2 gap-20 items-center mb-20">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-8">
+        <section className="relative hidden lg:grid lg:grid-cols-2 gap-20 items-center mb-20 overflow-hidden rounded-[40px] min-h-[760px] px-10 py-12">
+          <video
+            src="/hero-bg.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover opacity-25"
+          />
+
+          <div className="absolute inset-0 bg-[#050816]/75" />
+
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-8">
               🇭🇺 Magyar fejlesztésű AI videólabor
             </div>
 
-            <h1 className="text-6xl font-black leading-tight mb-6">
+            <h1 className="text-6xl xl:text-7xl font-black leading-[0.95] mb-6">
               Egy képből
               <br />
               élményvideó,
@@ -387,12 +398,12 @@ export default function App() {
               </span>
             </h1>
 
-            <p className="text-zinc-400 text-xl leading-relaxed mb-6">
+            <p className="text-zinc-300 text-xl leading-relaxed mb-6 max-w-2xl">
               Tölts fel egy képet, válassz kategóriát, és készíts reklámot,
               vicces videót, emlékvideót vagy cinematic jelenetet.
             </p>
 
-            <div className="mt-6 mb-10 inline-block bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 px-4 py-2 rounded-2xl text-sm">
+            <div className="mt-6 mb-10 inline-block bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 px-4 py-2 rounded-2xl text-sm backdrop-blur">
               🚀 A platform jelenleg fejlesztés alatt áll
             </div>
 
@@ -408,19 +419,21 @@ export default function App() {
                 Próbálja ki most →
               </button>
 
-              <button className="border border-zinc-700 hover:border-zinc-500 px-8 py-4 rounded-2xl font-semibold">
+              <button className="border border-zinc-700 hover:border-zinc-500 bg-black/20 backdrop-blur px-8 py-4 rounded-2xl font-semibold">
                 Nézzen példákat ▶
               </button>
             </div>
 
-            <div className="space-y-4 text-zinc-400">
+            <div className="space-y-4 text-zinc-300">
               <div>✅ Nem kell videószerkesztő tudás</div>
               <div>✅ Reklám, funny, memory és cinematic mód</div>
               <div>✅ Magyar narrációs irány előkészítve</div>
             </div>
           </div>
 
-          <BeforeAfterBlock />
+          <div className="relative z-10">
+            <BeforeAfterBlock />
+          </div>
         </section>
 
         <TrustStrip />
