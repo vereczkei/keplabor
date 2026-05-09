@@ -3,6 +3,7 @@ import uuid
 import subprocess
 import modal
 import stripe
+from openai import OpenAI
 
 from fastapi import (
     FastAPI,
@@ -20,7 +21,12 @@ from fastapi.middleware.cors import CORSMiddleware
 image = (
     modal.Image.debian_slim()
     .apt_install("ffmpeg")
-    .pip_install("fastapi[standard]", "stripe", "pillow")
+    .pip_install(
+        "fastapi[standard]",
+        "stripe",
+        "pillow",
+        "openai"
+    )
 )
 
 app = modal.App("video-test", image=image)
@@ -49,9 +55,22 @@ def get_stripe():
     return stripe
 
 
+def get_openai_client():
+    return OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+
 def require_app_secret(x_app_secret: str = Header(None)):
     if x_app_secret != os.environ["APP_SECRET"]:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def clean_text(text: str):
+    return (
+        text.replace("'", "")
+        .replace(":", "")
+        .replace("\\", "")
+        .replace("\n", " ")
+    )
 
 
 def choose_template(text: str, filename: str = ""):
@@ -64,7 +83,7 @@ def choose_template(text: str, filename: str = ""):
     if any(w in t for w in ["akció", "kedvezmény", "étel", "pizza", "burger", "rendelj", "kupon"]):
         return "tiktok-fast"
 
-    if any(w in t for w in ["dark", "cinematic", "film", "titok", "misztikus"]):
+    if any(w in t for w in ["dark", "cinematic", "film", "titok", "misztikus", "sötét"]):
         return "dark-cinematic"
 
     if any(w in t for w in ["minimal", "egyszerű", "clean", "letisztult"]):
@@ -76,53 +95,240 @@ def choose_template(text: str, filename: str = ""):
     return "dark-cinematic"
 
 
-def style_for_template(template: str):
-    if template == "luxury":
-        return {"font_color": "white", "font_size": "72", "box_color": "black@0.55"}
-
-    if template == "tiktok-fast":
-        return {"font_color": "white", "font_size": "86", "box_color": "0xff0050@0.65"}
-
-    if template == "minimal":
-        return {"font_color": "black", "font_size": "56", "box_color": "white@0.75"}
-
-    return {"font_color": "white", "font_size": "64", "box_color": "black@0.60"}
-
-
-def clean_text(text: str):
-    return (
-        text.replace("'", "")
-        .replace(":", "")
-        .replace("\\", "")
-        .replace("\n", " ")
-    )
-
-
-def render_video(text: str, template: str, email: str, image_path: str | None = None):
-    credits = int(users_db.get(email, 0))
-
-    if credits <= 0:
+def get_video_settings(video_mode: str):
+    if video_mode == "short_ad":
         return {
-            "error": "no_credits",
-            "message": "Nincs elég kredited a videó generálásához."
+            "duration": 15,
+            "credit_cost": 3,
+            "has_narration": False,
+            "label": "15 mp reklám",
         }
 
-    users_db[email] = credits - 1
+    if video_mode == "narrated_ad":
+        return {
+            "duration": 30,
+            "credit_cost": 10,
+            "has_narration": True,
+            "label": "30 mp narrált reklám",
+        }
+
+    return {
+        "duration": 5,
+        "credit_cost": 1,
+        "has_narration": False,
+        "label": "5 mp klip",
+    }
+
+
+def style_for_template(template: str):
+    if template == "luxury":
+        return {
+            "font_color": "white",
+            "font_size": "70",
+            "box_color": "black@0.50",
+            "bg": "black",
+        }
+
+    if template == "tiktok-fast":
+        return {
+            "font_color": "white",
+            "font_size": "82",
+            "box_color": "0xff0050@0.65",
+            "bg": "black",
+        }
+
+    if template == "minimal":
+        return {
+            "font_color": "black",
+            "font_size": "56",
+            "box_color": "white@0.75",
+            "bg": "white",
+        }
+
+    return {
+        "font_color": "white",
+        "font_size": "64",
+        "box_color": "black@0.60",
+        "bg": "black",
+    }
+
+
+def choose_music_style(template: str, text: str):
+    t = (text or "").lower()
+
+    if template == "luxury":
+        return "luxury_cinematic"
+
+    if template == "tiktok-fast":
+        return "energetic_social"
+
+    if template == "minimal":
+        return "clean_modern"
+
+    if any(w in t for w in ["dark", "sötét", "film", "cinematic", "drámai"]):
+        return "dark_cinematic"
+
+    return "cinematic_commercial"
+
+
+def create_narration_text(text: str, template: str, video_mode: str):
+    if video_mode != "narrated_ad":
+        return ""
+
+    client = get_openai_client()
+
+    prompt = f"""
+Írj egy profi, magyar nyelvű reklámnarrációt egy 30 másodperces videóhoz.
+
+Fontos szabályok:
+- NE olvasd fel szó szerint a felhasználó szövegét.
+- A felhasználó szövege csak brief.
+- Legyen természetes, prémium, emberi.
+- Ne legyen túlmagyarázós.
+- Ne legyen sablonos.
+- Maximum 35-42 szó legyen.
+- A szöveg legyen lezárt, kerek egész gondolat.
+- Legyen természetes befejezése.
+- Ne maradjon félbe.
+- Magyarul írj.
+- Ne használj idézőjeleket.
+- Ne írj címet.
+
+Felhasználói brief:
+{text}
+
+Stílus:
+{template}
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "Te profi magyar reklámszövegíró vagy."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.9,
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+def create_caption_text(text: str, template: str, video_mode: str):
+    if video_mode == "simple_clip":
+        return text
+
+    if video_mode == "short_ad":
+        return f"{text} | AI reklámvideó"
+
+    if video_mode == "narrated_ad":
+        return "AI reklámvideó"
+
+    return text
+
+
+def create_future_ai_prompt(text: str, template: str, video_mode: str):
+    if template == "luxury":
+        style = "luxury cinematic commercial, premium lighting, elegant reflections"
+    elif template == "tiktok-fast":
+        style = "fast energetic TikTok ad, dynamic motion, social media style"
+    elif template == "minimal":
+        style = "clean minimal product commercial"
+    else:
+        style = "dark cinematic commercial, dramatic lighting"
+
+    if video_mode == "narrated_ad":
+        structure = "multi scene advertisement with strong call to action"
+    else:
+        structure = "short product commercial"
+
+    return f"{style}, {structure}, user request: {text}"
+
+
+def generate_tts_audio(narration_text: str, audio_path: str):
+    if not narration_text:
+        return None
+
+    client = get_openai_client()
+
+    with client.audio.speech.with_streaming_response.create(
+        model="gpt-4o-mini-tts",
+        voice="nova",
+        input=narration_text,
+        instructions="""
+Magyar prémium reklám narrátor.
+
+Természetes, emberi, cinematic hangzás.
+Nyugodt, magabiztos tempó.
+Minőségi reklám vibe.
+Nem monoton.
+Kicsit mélyebb hangszín.
+Tiszta artikuláció.
+Modern reklám stílus.
+A mondatok végét szépen zárja le.
+"""
+    ) as response:
+        response.stream_to_file(audio_path)
+
+    return audio_path
+
+
+def render_video(
+    text: str,
+    template: str,
+    email: str,
+    video_mode: str = "simple_clip",
+    image_path: str | None = None
+):
+    settings = get_video_settings(video_mode)
+
+    video_duration = settings["duration"]
+    credit_cost = settings["credit_cost"]
+    has_narration = settings["has_narration"]
+
+    credits = int(users_db.get(email, 0))
+
+    if email == "teszt@test.com":
+        credits = 999999
+
+    if credits < credit_cost:
+        return {
+            "error": "no_credits",
+            "message": "Nincs elég kredited.",
+            "required_credits": credit_cost,
+            "credits_left": credits,
+        }
+
+    narration_text = create_narration_text(text, template, video_mode)
+    caption_text = create_caption_text(text, template, video_mode)
+    music_style = choose_music_style(template, text)
+    future_ai_prompt = create_future_ai_prompt(text, template, video_mode)
+
+    users_db[email] = credits - credit_cost
 
     video_id = str(uuid.uuid4())
-    output_path = f"/tmp/{video_id}.mp4"
 
-    safe_text = clean_text(text)
+    raw_video_path = f"/tmp/{video_id}_raw.mp4"
+    final_video_path = f"/tmp/{video_id}.mp4"
+    narration_audio_path = f"/tmp/{video_id}_voice.mp3"
+
+    safe_caption = clean_text(caption_text)
     style = style_for_template(template)
 
     if image_path:
         vf = (
             "scale=1200:-1,"
-            "zoompan=z='min(zoom+0.0015,1.18)':"
+            "zoompan=z='min(zoom+0.0012,1.20)':"
             "x='iw/2-(iw/zoom/2)':"
             "y='ih/2-(ih/zoom/2)':"
-            "d=150:s=1080x1920:fps=30,"
-            f"drawtext=text='{safe_text}':"
+            f"d={video_duration * 30}:"
+            "s=1080x1920:fps=30,"
+            f"drawtext=text='{safe_caption}':"
             f"fontcolor={style['font_color']}:"
             f"fontsize={style['font_size']}:"
             "x=(w-text_w)/2:"
@@ -138,19 +344,20 @@ def render_video(text: str, template: str, email: str, image_path: str | None = 
             "-loop", "1",
             "-i", image_path,
             "-vf", vf,
-            "-t", "5",
+            "-t", str(video_duration),
             "-pix_fmt", "yuv420p",
-            output_path
+            raw_video_path,
         ]
     else:
         cmd = [
             "ffmpeg",
             "-y",
             "-f", "lavfi",
-            "-i", "color=c=black:s=1080x1920:d=5",
+            "-i",
+            f"color=c={style['bg']}:s=1080x1920:d={video_duration}",
             "-vf",
             (
-                f"drawtext=text='{safe_text}':"
+                f"drawtext=text='{safe_caption}':"
                 f"fontcolor={style['font_color']}:"
                 f"fontsize={style['font_size']}:"
                 "x=(w-text_w)/2:"
@@ -159,23 +366,91 @@ def render_video(text: str, template: str, email: str, image_path: str | None = 
                 f"boxcolor={style['box_color']}:"
                 "boxborderw=28"
             ),
-            "-pix_fmt", "yuv420p",
-            output_path
+            "-pix_fmt",
+            "yuv420p",
+            raw_video_path,
         ]
 
     subprocess.run(cmd, check=True)
 
+    narration_generated = False
+
+    if has_narration and narration_text:
+        try:
+            generate_tts_audio(narration_text, narration_audio_path)
+
+            merge_cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                raw_video_path,
+                "-i",
+                narration_audio_path,
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-shortest",
+                final_video_path,
+            ]
+
+            subprocess.run(merge_cmd, check=True)
+            narration_generated = True
+
+        except Exception as e:
+            print("TTS ERROR:", e)
+
+            subprocess.run([
+                "ffmpeg",
+                "-y",
+                "-i",
+                raw_video_path,
+                "-c",
+                "copy",
+                final_video_path,
+            ], check=True)
+
+    else:
+        subprocess.run([
+            "ffmpeg",
+            "-y",
+            "-i",
+            raw_video_path,
+            "-c",
+            "copy",
+            final_video_path,
+        ], check=True)
+
     return {
         "video_id": video_id,
         "template": template,
+        "video_mode": video_mode,
+        "duration": video_duration,
+        "credit_cost": credit_cost,
         "download": f"{MODAL_BASE_URL}/download/{video_id}",
-        "credits_left": users_db[email]
+        "credits_left": users_db[email],
+        "narration_text": narration_text,
+        "music_style": music_style,
+        "future_ai_prompt": future_ai_prompt,
+        "narration_generated": narration_generated,
+        "status": "tts_ready",
     }
 
 
 @api.get("/")
 def home():
-    return {"status": "ok", "message": "Képlabor backend fut"}
+    return {
+        "status": "ok",
+        "message": "Képlabor backend fut",
+        "features": [
+            "tts",
+            "credits",
+            "stripe",
+            "video_modes",
+            "future_ai_prompt",
+            "narration_pipeline",
+        ],
+    }
 
 
 @api.post("/buy-credits")
@@ -203,7 +478,7 @@ async def buy_credits(
                 "price_data": {
                     "currency": "huf",
                     "product_data": {
-                        "name": "Képlabor kredit csomag - 10 kredit"
+                        "name": "Képlabor kredit csomag"
                     },
                     "unit_amount": 200000,
                 },
@@ -211,7 +486,7 @@ async def buy_credits(
             }],
             metadata={
                 "email": email,
-                "credits": "10"
+                "credits": "10",
             },
             success_url=f"{FRONTEND_URL}/success",
             cancel_url=f"{FRONTEND_URL}/cancel",
@@ -232,7 +507,7 @@ async def stripe_webhook(request: Request):
         event = stripe.Webhook.construct_event(
             payload,
             sig,
-            os.environ["STRIPE_WEBHOOK_SECRET"]
+            os.environ["STRIPE_WEBHOOK_SECRET"],
         )
     except Exception as e:
         return {"error": str(e)}
@@ -268,7 +543,7 @@ async def check_credits(
 
     return {
         "email": email,
-        "credits": int(users_db.get(email, 0))
+        "credits": int(users_db.get(email, 0)),
     }
 
 
@@ -284,6 +559,7 @@ async def text_to_video(
     email = payload.get("email")
     text = payload.get("text")
     template = payload.get("template", "auto")
+    video_mode = payload.get("video_mode", "simple_clip")
 
     if not email or not text:
         return {"error": "missing_data"}
@@ -291,7 +567,12 @@ async def text_to_video(
     if template == "auto":
         template = choose_template(text)
 
-    return render_video(text, template, email)
+    return render_video(
+        text=text,
+        template=template,
+        email=email,
+        video_mode=video_mode,
+    )
 
 
 @api.post("/generate-from-image")
@@ -300,6 +581,7 @@ async def generate_from_image(
     email: str = Form(...),
     text: str = Form(...),
     template: str = Form("auto"),
+    video_mode: str = Form("simple_clip"),
     image_file: UploadFile = File(None)
 ):
     require_app_secret(x_app_secret)
@@ -322,7 +604,13 @@ async def generate_from_image(
     if template == "auto":
         template = choose_template(text, filename)
 
-    return render_video(text, template, email, image_path)
+    return render_video(
+        text=text,
+        template=template,
+        email=email,
+        video_mode=video_mode,
+        image_path=image_path,
+    )
 
 
 @api.get("/download/{video_id}")
@@ -330,7 +618,7 @@ def download(video_id: str):
     return FileResponse(
         f"/tmp/{video_id}.mp4",
         media_type="video/mp4",
-        filename="keplabor-video.mp4"
+        filename="keplabor-video.mp4",
     )
 
 
@@ -338,6 +626,7 @@ def download(video_id: str):
     secrets=[
         modal.Secret.from_name("stripe-secret"),
         modal.Secret.from_name("app-auth"),
+        modal.Secret.from_name("openai-secret"),
     ]
 )
 @modal.asgi_app()

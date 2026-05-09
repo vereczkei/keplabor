@@ -386,13 +386,17 @@ export default function App() {
 
         <section className="relative hidden lg:grid lg:grid-cols-2 gap-20 items-center mb-20 overflow-hidden rounded-[40px] min-h-[760px] px-10 py-12">
           <video
-            src="/hero-bg.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover opacity-45"
-          />
+  src="/hero-bg.mp4"
+  autoPlay
+  muted
+  loop
+  playsInline
+  className="
+    absolute inset-0 w-full h-full object-cover
+    opacity-65
+    md:opacity-45
+  "
+/>
 
           <div className="absolute inset-0 bg-[#050816]/55" />
 
