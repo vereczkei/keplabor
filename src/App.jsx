@@ -341,13 +341,13 @@ export default function App() {
               object-cover
               object-[center_-220px]
               opacity-100
-              brightness-[1.9]
-              contrast-[1.12]
-              saturate-[1.18]
+              brightness-[1.35]
+              contrast-100
+              saturate-100
             "
           />
 
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050816]/45 via-[#050816]/30 to-[#050816]/85" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#050816]/55 via-[#050816]/45 to-[#050816]/88" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(124,58,237,0.18),transparent_38%)]" />
 
           <div className="relative z-10">
