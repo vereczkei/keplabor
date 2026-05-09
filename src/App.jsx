@@ -152,26 +152,26 @@ export default function App() {
     {
       id: "ad",
       title: "📣 Reklám",
-      desc: "Termékekhez, webshophoz, szolgáltatáshoz",
-      prompt: "Luxus fekete férfi karóra cinematic reklám",
+      desc: "Termékhez, webshophoz, szolgáltatáshoz.",
+      prompt: "Prémium reklámvideó modern fényekkel, cinematic hangulattal.",
     },
     {
       id: "funny",
       title: "😂 Funny",
-      desc: "Poénos, TikTok-kompatibilis, mémes videók",
-      prompt: "Vicces videó egy cipőről, mintha szuperhős lenne",
+      desc: "TikTok-kompatibilis poénos, mémes videók.",
+      prompt: "Vicces, figyelemfelkeltő social videó gyors mozgással.",
     },
     {
       id: "memory",
       title: "🕯️ Emlék",
-      desc: "Finom, tiszteletteljes mozgó emlékvideó képből",
-      prompt: "Megható, finom mozgású emlékvideó családi fotóból",
+      desc: "Finom, tiszteletteljes emlékvideó képből.",
+      prompt: "Megható, finom mozgású emlékvideó családi fotóból.",
     },
     {
       id: "cinematic",
       title: "🎬 Cinematic",
-      desc: "Mozis, hangulatos, látványos képből videó",
-      prompt: "Sötét, filmszerű cinematic jelenet prémium fényekkel",
+      desc: "Mozis, hangulatos, látványos jelenet.",
+      prompt: "Sötét, filmszerű cinematic jelenet prémium fényekkel.",
     },
   ];
 
@@ -179,27 +179,27 @@ export default function App() {
     {
       id: "auto",
       title: "✨ Auto AI",
-      desc: "A rendszer választja ki a legjobb stílust",
+      desc: "A rendszer választja ki a legjobb stílust.",
     },
     {
       id: "luxury",
       title: "💎 Luxury",
-      desc: "Prémium, elegáns reklámhatás",
+      desc: "Prémium, elegáns reklámhatás.",
     },
     {
       id: "tiktok-fast",
       title: "⚡ TikTok Fast",
-      desc: "Gyors, figyelemfelkeltő social videó",
+      desc: "Gyors, figyelemfelkeltő social videó.",
     },
     {
       id: "dark-cinematic",
-      title: "🎬 Cinematic",
-      desc: "Sötét, filmszerű hangulat",
+      title: "🎬 Dark Cinematic",
+      desc: "Sötét, filmszerű, drámai hangulat.",
     },
     {
       id: "minimal",
       title: "⚪ Minimal",
-      desc: "Letisztult, modern termékbemutató",
+      desc: "Letisztult, modern termékbemutató.",
     },
   ];
 
@@ -207,19 +207,19 @@ export default function App() {
     {
       id: "simple_clip",
       title: "5 mp klip",
-      desc: "Gyors látványos videó",
+      desc: "Gyors látványos videó.",
       credits: "1 kredit",
     },
     {
       id: "short_ad",
       title: "15 mp videó",
-      desc: "Rövid social tartalom",
+      desc: "Rövid social tartalom.",
       credits: "3 kredit",
     },
     {
       id: "narrated_ad",
       title: "30 mp narrált videó",
-      desc: "Teljes videó AI narrációval",
+      desc: "Teljes videó AI narrációval.",
       credits: "10 kredit",
     },
   ];
@@ -231,18 +231,22 @@ export default function App() {
       <div className="relative">
         <div className={`grid grid-cols-2 gap-3 ${mobile ? "mb-4" : "mb-6"}`}>
           <div>
-            <p className="text-xs md:text-sm text-zinc-400 mb-2">ELŐTTE</p>
+            <p className="text-[11px] md:text-sm text-zinc-300 mb-2 font-bold tracking-[0.2em]">
+              ELŐTTE
+            </p>
 
             <img
               src="/oldal.png"
-              className={`rounded-3xl w-full object-cover border border-zinc-800 shadow-2xl ${
+              className={`rounded-3xl w-full object-cover border border-white/10 shadow-2xl ${
                 mobile ? "h-[230px]" : "h-[320px]"
               }`}
             />
           </div>
 
           <div>
-            <p className="text-xs md:text-sm text-zinc-400 mb-2">UTÁNA</p>
+            <p className="text-[11px] md:text-sm text-cyan-200 mb-2 font-bold tracking-[0.2em]">
+              UTÁNA
+            </p>
 
             <video
               src="/oldal.mp4"
@@ -250,7 +254,7 @@ export default function App() {
               muted
               loop
               playsInline
-              className={`rounded-3xl w-full object-cover border border-violet-500/40 shadow-2xl ${
+              className={`rounded-3xl w-full object-cover border border-cyan-400/40 shadow-2xl ${
                 mobile ? "h-[230px]" : "h-[320px]"
               }`}
             />
@@ -258,20 +262,19 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-3 gap-3 md:gap-4">
-          <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 md:p-5">
-            <div className="text-xl md:text-3xl font-black">AI</div>
-            <div className="text-zinc-400 text-xs md:text-sm">mozgás</div>
-          </div>
-
-          <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 md:p-5">
-            <div className="text-xl md:text-3xl font-black">Voice</div>
-            <div className="text-zinc-400 text-xs md:text-sm">narráció</div>
-          </div>
-
-          <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 md:p-5">
-            <div className="text-xl md:text-3xl font-black">HD</div>
-            <div className="text-zinc-400 text-xs md:text-sm">export</div>
-          </div>
+          {[
+            ["AI", "mozgás"],
+            ["Voice", "narráció"],
+            ["HD", "export"],
+          ].map(([top, bottom]) => (
+            <div
+              key={top}
+              className="bg-black/45 backdrop-blur border border-white/10 rounded-2xl p-4 md:p-5"
+            >
+              <div className="text-xl md:text-3xl font-black">{top}</div>
+              <div className="text-zinc-300 text-xs md:text-sm">{bottom}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -287,7 +290,7 @@ export default function App() {
       ].map((item) => (
         <div
           key={item}
-          className="bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-4 text-center text-zinc-300 text-sm"
+          className="bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-4 text-center text-zinc-300 text-sm backdrop-blur"
         >
           {item}
         </div>
@@ -325,98 +328,96 @@ export default function App() {
           </button>
         </nav>
 
-        <section className="relative block lg:hidden mb-20 overflow-hidden rounded-[32px] px-4 py-6 min-h-[860px]">
-  <video
-    src="/hero-bg.mp4"
-    autoPlay
-    muted
-    loop
-    playsInline
-    className="
-      absolute inset-0
-      w-full h-full
-      object-cover
-      object-[center_-220px]
-      opacity-100
-      brightness-[1.85]
-      contrast-[1.15]
-      saturate-[1.2]
-    "
-  />
-
-  <div className="absolute inset-0 bg-gradient-to-b from-[#050816]/25 via-[#050816]/30 to-[#050816]/80" />
-
-  <div className="relative z-10">
-    <div className="mb-8">
-      <div className="inline-flex items-center gap-2 bg-zinc-900/70 backdrop-blur border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-6">
-        🇭🇺 Képből élményvideó AI-val
-      </div>
-
-      <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-5 drop-shadow-2xl">
-        Keltsd életre
-        <br />
-        a képed
-        <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-          {" "}
-          videóként.
-        </span>
-      </h1>
-
-      <p className="text-zinc-200 text-lg leading-relaxed mb-4 drop-shadow-xl">
-        Reklám, vicces videó, emlék vagy cinematic jelenet — egy képből,
-        narrációval.
-      </p>
-
-      <div className="inline-block bg-yellow-500/15 border border-yellow-500/40 text-yellow-200 px-4 py-2 rounded-2xl text-sm mb-6 backdrop-blur">
-        🚀 A platform jelenleg fejlesztés alatt áll
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          onClick={() =>
-            document
-              .getElementById("generator")
-              ?.scrollIntoView({ behavior: "smooth" })
-          }
-          className="flex-1 bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-4 rounded-2xl font-bold text-base shadow-lg shadow-violet-900/30"
-        >
-          Kipróbálom →
-        </button>
-
-        <button className="flex-1 border border-zinc-700 bg-black/20 backdrop-blur px-5 py-4 rounded-2xl font-semibold text-base">
-          Példák ▶
-        </button>
-      </div>
-    </div>
-
-    <BeforeAfterBlock mobile />
-  </div>
-</section>
-
-        <section className="relative hidden lg:grid lg:grid-cols-2 gap-20 items-center mb-20 overflow-hidden rounded-[40px] min-h-[760px] px-10 py-12">
+        <section className="relative block lg:hidden mb-20 overflow-hidden rounded-[32px] px-4 py-6 min-h-[860px] border border-white/10 shadow-2xl">
           <video
-  src="/hero-bg.mp4"
-  autoPlay
-  muted
-  loop
-  playsInline
-  className="
-    absolute inset-0
-    w-full h-full
-    object-cover
+            src="/hero-bg.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="
+              absolute inset-0
+              w-full h-full
+              object-cover
+              object-[center_-220px]
+              opacity-100
+              brightness-[1.9]
+              contrast-[1.12]
+              saturate-[1.18]
+            "
+          />
 
-    object-[center_-180px]
+          <div className="absolute inset-0 bg-gradient-to-b from-[#050816]/45 via-[#050816]/30 to-[#050816]/85" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(124,58,237,0.18),transparent_38%)]" />
 
-    opacity-100
-    brightness-150
+          <div className="relative z-10">
+            <div className="mb-8">
+              <div className="inline-flex items-center gap-2 bg-black/55 backdrop-blur border border-white/10 rounded-full px-4 py-2 text-sm text-zinc-100 mb-6 shadow-xl">
+                🇭🇺 Magyar AI videólabor
+              </div>
 
-    md:object-center
-    md:opacity-30
-    md:brightness-100
-  "
-/>
+              <h1 className="text-4xl sm:text-5xl font-black leading-[0.95] tracking-tight mb-5 text-white drop-shadow-[0_5px_22px_rgba(0,0,0,1)]">
+                Keltsd életre
+                <br />
+                a képed
+                <span className="bg-gradient-to-r from-violet-300 to-cyan-300 bg-clip-text text-transparent">
+                  {" "}
+                  videóként.
+                </span>
+              </h1>
 
-          <div className="absolute inset-0 bg-[#050816]/25 md:bg-[#050816]/70" />
+              <p className="text-zinc-100 text-lg leading-relaxed mb-4 font-medium drop-shadow-[0_3px_14px_rgba(0,0,0,1)]">
+                Reklám, vicces videó, emlék vagy cinematic jelenet — egy képből,
+                narrációval.
+              </p>
+
+              <div className="inline-block bg-yellow-500/15 border border-yellow-400/40 text-yellow-100 px-4 py-2 rounded-2xl text-sm mb-6 backdrop-blur shadow-lg">
+                🚀 Fejlesztés alatt — korai tesztverzió
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() =>
+                    document
+                      .getElementById("generator")
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                  className="flex-1 bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-4 rounded-2xl font-black text-base shadow-lg shadow-violet-900/40 active:scale-95 transition"
+                >
+                  Kipróbálom →
+                </button>
+
+                <button className="flex-1 border border-white/15 bg-black/35 backdrop-blur px-5 py-4 rounded-2xl font-semibold text-base active:scale-95 transition">
+                  Példák ▶
+                </button>
+              </div>
+            </div>
+
+            <BeforeAfterBlock mobile />
+          </div>
+        </section>
+
+        <section className="relative hidden lg:grid lg:grid-cols-2 gap-20 items-center mb-20 overflow-hidden rounded-[40px] min-h-[760px] px-10 py-12 border border-white/10 shadow-2xl">
+          <video
+            src="/hero-bg.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="
+              absolute inset-0
+              w-full h-full
+              object-cover
+              object-[center_-180px]
+              opacity-100
+              brightness-150
+              md:object-center
+              md:opacity-45
+              md:brightness-100
+            "
+          />
+
+          <div className="absolute inset-0 bg-[#050816]/25 md:bg-[#050816]/55" />
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-8">
@@ -476,9 +477,14 @@ export default function App() {
         <section className="mb-20">
           <div className="flex items-end justify-between gap-6 mb-8">
             <div>
+              <div className="text-cyan-300 font-bold text-sm mb-3 tracking-[0.25em]">
+                VIDEÓMÓDOK
+              </div>
+
               <h2 className="text-3xl md:text-4xl font-black mb-3">
                 Nem csak reklám. Képből történet.
               </h2>
+
               <p className="text-zinc-400 max-w-2xl">
                 Válaszd ki, milyen hangulatú videót szeretnél. A háttérben a
                 rendszer ehhez igazítja a promptot, narrációt és stílust.
@@ -511,12 +517,17 @@ export default function App() {
 
         <section id="generator" className="grid lg:grid-cols-2 gap-12">
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-[32px] p-6 md:p-8 shadow-2xl">
+            <div className="inline-flex bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 px-4 py-2 rounded-full text-sm font-bold mb-5">
+              ✨ AI generátor
+            </div>
+
             <h2 className="text-3xl md:text-4xl font-black mb-2">
               Készítsd el az első videódat
             </h2>
 
             <p className="text-zinc-400 mb-8 md:mb-10">
-              Kép + kategória + stílus + hossz = kész AI videó.
+              Nem kell profi prompt. Írd le egyszerűen, a Képlabor mögötte
+              filmes irányba alakítja.
             </p>
 
             <div className="space-y-6">
@@ -584,7 +595,7 @@ export default function App() {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   rows="5"
-                  placeholder="Írd le, milyen videót szeretnél..."
+                  placeholder="Pl.: Csinálj belőlem prémium reklámvideót, mintha egy luxusmárka kampánya lenne..."
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-5 py-4 outline-none focus:border-violet-500"
                 />
               </div>
@@ -690,6 +701,10 @@ export default function App() {
           </div>
 
           <div className="bg-zinc-900/40 border border-zinc-800 rounded-[32px] p-6 md:p-8 shadow-2xl">
+            <div className="inline-flex bg-violet-500/10 border border-violet-500/20 text-violet-200 px-4 py-2 rounded-full text-sm font-bold mb-5">
+              🎥 Élő előnézet
+            </div>
+
             <h2 className="text-3xl md:text-4xl font-black mb-3">Előnézet</h2>
 
             <p className="text-zinc-400 mb-8">
@@ -758,6 +773,7 @@ export default function App() {
             <h2 className="text-3xl md:text-5xl font-black mb-5">
               Egy kép. Több történet.
             </h2>
+
             <p className="text-zinc-400 text-lg max-w-3xl mx-auto mb-8">
               A Képlabor célja, hogy bárki képes legyen látványos, narrált
               videókat készíteni képekből — reklámhoz, poénhoz, emlékhez vagy
