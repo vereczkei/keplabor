@@ -392,9 +392,18 @@ export default function App() {
   loop
   playsInline
   className="
-    absolute inset-0 w-full h-full object-cover
-    opacity-90
+    absolute inset-0
+    w-full h-full
+    object-cover
+
+    object-[center_-120px]
+
+    opacity-100
+    brightness-125
+
+    md:object-center
     md:opacity-45
+    md:brightness-100
   "
 />
 
