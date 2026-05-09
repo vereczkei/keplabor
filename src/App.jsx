@@ -411,12 +411,12 @@ export default function App() {
     brightness-150
 
     md:object-center
-    md:opacity-45
+    md:opacity-30
     md:brightness-100
   "
 />
 
-          <div className="absolute inset-0 bg-[#050816]/25 md:bg-[#050816]/55" />
+          <div className="absolute inset-0 bg-[#050816]/25 md:bg-[#050816]/70" />
 
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-8">
