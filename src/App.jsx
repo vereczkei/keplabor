@@ -325,7 +325,19 @@ export default function App() {
           </button>
         </nav>
 
-        <section className="block lg:hidden mb-20">
+        <section className="relative block lg:hidden mb-20 overflow-hidden rounded-[32px] px-4 py-6">
+  <video
+    src="/hero-bg.mp4"
+    autoPlay
+    muted
+    loop
+    playsInline
+    className="absolute inset-0 w-full h-full object-cover opacity-25"
+  />
+
+  <div className="absolute inset-0 bg-[#050816]/75" />
+
+  <div className="relative z-10">
           <div className="mb-8">
             <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-6">
               🇭🇺 Képből élményvideó AI-val
@@ -369,7 +381,8 @@ export default function App() {
           </div>
 
           <BeforeAfterBlock mobile />
-        </section>
+            </div>
+          </section>
 
         <section className="relative hidden lg:grid lg:grid-cols-2 gap-20 items-center mb-20 overflow-hidden rounded-[40px] min-h-[760px] px-10 py-12">
           <video
