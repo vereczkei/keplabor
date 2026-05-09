@@ -336,7 +336,7 @@ export default function App() {
       absolute inset-0
       w-full h-full
       object-cover
-      object-[center_18%]
+      object-[center_-220px]
       opacity-100
       brightness-[1.85]
       contrast-[1.15]
