@@ -325,64 +325,73 @@ export default function App() {
           </button>
         </nav>
 
-        <section className="relative block lg:hidden mb-20 overflow-hidden rounded-[32px] px-4 py-6">
+        <section className="relative block lg:hidden mb-20 overflow-hidden rounded-[32px] px-4 py-6 min-h-[860px]">
   <video
     src="/hero-bg.mp4"
     autoPlay
     muted
     loop
     playsInline
-    className="absolute inset-0 w-full h-full object-cover opacity-25"
+    className="
+      absolute inset-0
+      w-full h-full
+      object-cover
+      object-[center_18%]
+      opacity-100
+      brightness-[1.85]
+      contrast-[1.15]
+      saturate-[1.2]
+    "
   />
 
-  <div className="absolute inset-0 bg-[#050816]/75" />
+  <div className="absolute inset-0 bg-gradient-to-b from-[#050816]/25 via-[#050816]/30 to-[#050816]/80" />
 
   <div className="relative z-10">
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-6">
-              🇭🇺 Képből élményvideó AI-val
-            </div>
+    <div className="mb-8">
+      <div className="inline-flex items-center gap-2 bg-zinc-900/70 backdrop-blur border border-zinc-800 rounded-full px-4 py-2 text-sm text-zinc-300 mb-6">
+        🇭🇺 Képből élményvideó AI-val
+      </div>
 
-            <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-5">
-              Keltsd életre
-              <br />
-              a képed
-              <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                {" "}
-                videóként.
-              </span>
-            </h1>
+      <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-5 drop-shadow-2xl">
+        Keltsd életre
+        <br />
+        a képed
+        <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
+          {" "}
+          videóként.
+        </span>
+      </h1>
 
-            <p className="text-zinc-400 text-lg leading-relaxed mb-4">
-              Reklám, vicces videó, emlék vagy cinematic jelenet — egy képből,
-              narrációval.
-            </p>
+      <p className="text-zinc-200 text-lg leading-relaxed mb-4 drop-shadow-xl">
+        Reklám, vicces videó, emlék vagy cinematic jelenet — egy képből,
+        narrációval.
+      </p>
 
-            <div className="inline-block bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 px-4 py-2 rounded-2xl text-sm mb-6">
-              🚀 A platform jelenleg fejlesztés alatt áll
-            </div>
+      <div className="inline-block bg-yellow-500/15 border border-yellow-500/40 text-yellow-200 px-4 py-2 rounded-2xl text-sm mb-6 backdrop-blur">
+        🚀 A platform jelenleg fejlesztés alatt áll
+      </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() =>
-                  document
-                    .getElementById("generator")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-                className="flex-1 bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-4 rounded-2xl font-bold text-base shadow-lg shadow-violet-900/30"
-              >
-                Kipróbálom →
-              </button>
+      <div className="flex gap-3">
+        <button
+          onClick={() =>
+            document
+              .getElementById("generator")
+              ?.scrollIntoView({ behavior: "smooth" })
+          }
+          className="flex-1 bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-4 rounded-2xl font-bold text-base shadow-lg shadow-violet-900/30"
+        >
+          Kipróbálom →
+        </button>
 
-              <button className="flex-1 border border-zinc-700 px-5 py-4 rounded-2xl font-semibold text-base">
-                Példák ▶
-              </button>
-            </div>
-          </div>
+        <button className="flex-1 border border-zinc-700 bg-black/20 backdrop-blur px-5 py-4 rounded-2xl font-semibold text-base">
+          Példák ▶
+        </button>
+      </div>
+    </div>
 
-          <BeforeAfterBlock mobile />
-            </div>
-          </section>
+    <BeforeAfterBlock mobile />
+  </div>
+</section>
 
         <section className="relative hidden lg:grid lg:grid-cols-2 gap-20 items-center mb-20 overflow-hidden rounded-[40px] min-h-[760px] px-10 py-12">
           <video
