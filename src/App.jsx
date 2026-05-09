@@ -393,7 +393,7 @@ export default function App() {
   playsInline
   className="
     absolute inset-0 w-full h-full object-cover
-    opacity-65
+    opacity-90
     md:opacity-45
   "
 />
