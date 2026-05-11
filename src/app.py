@@ -293,8 +293,6 @@ def render_video(
 
     credits = int(users_db.get(email, 0))
 
-    if email == "teszt@test.com":
-        credits = 999999
 
     if credits < credit_cost:
         return {
