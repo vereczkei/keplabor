@@ -380,9 +380,9 @@ export default function App() {
             muted
             loop
             playsInline
-            className="absolute inset-0 h-full w-full object-cover opacity-30"
+            className="absolute inset-0 h-full w-full object-cover opacity-70"
           />
-          <div className="absolute inset-0 bg-[#050816]/70" />
+          <div className="absolute inset-0 bg-[#050816]/25" />
 
           <div className="relative z-10">
             <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 backdrop-blur">
