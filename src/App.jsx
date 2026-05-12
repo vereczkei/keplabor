@@ -382,7 +382,7 @@ export default function App() {
             playsInline
             className="absolute inset-0 h-full w-full object-cover opacity-70"
           />
-          <div className="absolute inset-0 bg-[#050816]/25" />
+          <div className="absolute inset-0 bg-[#050816]/10" />
 
           <div className="relative z-10">
             <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 backdrop-blur">
@@ -429,7 +429,7 @@ export default function App() {
             muted
             loop
             playsInline
-            className="absolute inset-0 h-full w-full object-cover opacity-28"
+            className="absolute inset-0 h-full w-full object-cover opacity-90"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#050816]/90 via-[#050816]/72 to-[#050816]/70" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.18),transparent_38%),radial-gradient(circle_at_85%_65%,rgba(34,211,238,0.14),transparent_36%)]" />
