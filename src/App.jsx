@@ -7,7 +7,6 @@ const API_URL =
 const APP_SECRET = "keplabor_titkos_2026_vedelem";
 
 export default function App() {
-
   const [user, setUser] = useState(null);
 
   const [email, setEmail] = useState("");
@@ -17,7 +16,7 @@ export default function App() {
 
   const [category, setCategory] = useState("cinematic");
   const [template, setTemplate] = useState("auto");
-  const [videoMode, setVideoMode] = useState("simple_clip");
+  const [videoMode, setVideoMode] = useState("clip_6s");
 
   const [videoUrl, setVideoUrl] = useState("");
   const [creditsLeft, setCreditsLeft] = useState(null);
@@ -25,177 +24,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [buying, setBuying] = useState(false);
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-
-      if (data.user?.email) {
-        setEmail(data.user.email);
-      }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-
-      if (session?.user?.email) {
-        setEmail(session.user.email);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  async function handleLogin() {
-    if (!email) {
-      setMessage("Adj meg email címet.");
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    });
-
-    if (error) {
-      setMessage("Belépési hiba.");
-      return;
-    }
-
-    setMessage("Belépési link elküldve emailben.");
-  }
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    setUser(null);
-    setEmail("");
-  }
-
-  async function checkCredits() {
-    if (!email) {
-      setMessage("Adj meg email címet.");
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/check-credits`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-app-secret": APP_SECRET,
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setMessage("Kredit ellenőrzési hiba.");
-        return;
-      }
-
-      setCreditsLeft(data.credits);
-      setMessage(`Aktuális kredited: ${data.credits}`);
-    } catch (err) {
-      setMessage("Szerver hiba kredit ellenőrzésnél.");
-    }
-  }
-
-  async function buyCredits() {
-    if (!email) {
-      setMessage("Először jelentkezz be.");
-      return;
-    }
-
-    setBuying(true);
-    setMessage("Stripe fizetés indítása...");
-
-    try {
-      const res = await fetch(`${API_URL}/buy-credits`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-app-secret": APP_SECRET,
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setMessage("Stripe hiba.");
-      }
-    } catch (err) {
-      setMessage("Stripe szerver hiba.");
-    }
-
-    setBuying(false);
-  }
-
-  async function generateVideo() {
-    if (!email) {
-      setMessage("Először jelentkezz be.");
-      return;
-    }
-
-    if (!text) {
-      setMessage("Írd le röviden, milyen jelenetet szeretnél.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("");
-    setVideoUrl("");
-
-    try {
-      const formData = new FormData();
-
-      formData.append("email", email);
-      formData.append("text", text);
-      formData.append("category", category);
-      formData.append("template", template);
-      formData.append("video_mode", videoMode);
-
-      if (image) {
-        formData.append("image_file", image);
-      }
-
-      const res = await fetch(`${API_URL}/generate-from-image`, {
-        method: "POST",
-        headers: {
-          "x-app-secret": APP_SECRET,
-        },
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        if (data.error === "no_credits") {
-          setMessage("A generálás jelenleg nem elérhető vagy nincs elég kredit.");
-        } else {
-          setMessage("Hiba: " + data.error);
-        }
-
-        setLoading(false);
-        return;
-      }
-
-      setVideoUrl(data.download);
-      setCreditsLeft(data.credits_left);
-      setMessage("Elkészült az előnézeti videó.");
-    } catch (err) {
-      setMessage("Szerver hiba.");
-    }
-
-    setLoading(false);
-  }
 
   const experiences = [
     {
@@ -258,7 +86,7 @@ export default function App() {
     {
       id: "auto",
       title: "Auto AI",
-      desc: "A rendszer választja ki a legjobb hangulatot",
+      desc: "A rendszer választja ki a legjobb filmes hangulatot",
     },
     {
       id: "dark-cinematic",
@@ -284,29 +112,267 @@ export default function App() {
 
   const videoModes = [
     {
-      id: "simple_clip",
-      title: "Rövid élmény",
-      desc: "Gyors 5 mp-es cinematic preview",
-      credits: "1 kredit",
+      id: "clip_6s",
+      title: "6 mp cinematic klip",
+      desc: "Gyors, látványos AI jelenet képből",
+      credits: 1,
+      label: "1 kredit",
     },
     {
-      id: "short_ad",
-      title: "Social videó",
-      desc: "15 mp-es Reels / TikTok hangulat",
-      credits: "3 kredit",
+      id: "clip_8s",
+      title: "8 mp prémium jelenet",
+      desc: "Hosszabb, erősebb social / reklám hangulat",
+      credits: 2,
+      label: "2 kredit",
+    },
+  ];
+
+  const pricingPackages = [
+    {
+      id: "starter",
+      badge: "Kezdéshez",
+      title: "Starter",
+      price: "1 990 Ft",
+      credits: 5,
+      desc: "5 db 6 mp-es videó vagy 2 db 8 mp-es prémium jelenet.",
+      highlight: false,
+      cta: "Starter csomag",
     },
     {
-      id: "narrated_ad",
-      title: "Prémium jelenet",
-      desc: "30 mp-es hosszabb cinematic élmény",
-      credits: "10 kredit",
+      id: "creator",
+      badge: "Legjobb választás",
+      title: "Creator",
+      price: "4 990 Ft",
+      credits: 15,
+      desc: "15 db 6 mp-es videó vagy 7 db 8 mp-es prémium jelenet.",
+      highlight: true,
+      cta: "Creator csomag",
+    },
+    {
+      id: "pro",
+      badge: "Tartalomgyártóknak",
+      title: "Pro",
+      price: "9 990 Ft",
+      credits: 35,
+      desc: "35 db 6 mp-es videó vagy 17 db 8 mp-es prémium jelenet.",
+      highlight: false,
+      cta: "Pro csomag",
     },
   ];
 
   const currentExperience = experiences.find((item) => item.id === category);
+  const currentVideoMode = videoModes.find((item) => item.id === videoMode);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+
+      if (data.user?.email) {
+        setEmail(data.user.email);
+        checkCredits(data.user.email, false);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+
+      if (session?.user?.email) {
+        setEmail(session.user.email);
+        checkCredits(session.user.email, false);
+        setMessage("Sikeres belépés. Most már tudsz kreditet vásárolni vagy videót generálni.");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleLogin() {
+    if (!email) {
+      setMessage("Adj meg email címet a belépéshez.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      setMessage("Belépési hiba. Ellenőrizd az email címet.");
+      return;
+    }
+
+    setMessage("Elküldtük a biztonságos belépési linket emailben.");
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setUser(null);
+    setEmail("");
+    setCreditsLeft(null);
+    setMessage("Kiléptél a fiókból.");
+  }
+
+  async function checkCredits(targetEmail = email, showMsg = true) {
+    if (!targetEmail) {
+      setMessage("Adj meg email címet.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/check-credits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-app-secret": APP_SECRET,
+        },
+        body: JSON.stringify({ email: targetEmail }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        if (showMsg) setMessage("Kredit ellenőrzési hiba.");
+        return;
+      }
+
+      setCreditsLeft(data.credits);
+
+      if (showMsg) {
+        setMessage(`Aktuális kredited: ${data.credits}`);
+      }
+    } catch (err) {
+      if (showMsg) setMessage("Szerver hiba kredit ellenőrzésnél.");
+    }
+  }
+
+  async function buyCredits(packageId = "starter") {
+    if (!user?.email && !email) {
+      setMessage("Először jelentkezz be vagy add meg az emailed.");
+      scrollToGenerator();
+      return;
+    }
+
+    setBuying(true);
+    setMessage("Stripe fizetés indítása...");
+
+    try {
+      const res = await fetch(`${API_URL}/buy-credits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-app-secret": APP_SECRET,
+        },
+        body: JSON.stringify({
+          email: user?.email || email,
+          package_id: packageId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setMessage("Stripe hiba. Az app.py backendben is engedélyezni kell a csomagválasztást.");
+      }
+    } catch (err) {
+      setMessage("Stripe szerver hiba.");
+    }
+
+    setBuying(false);
+  }
+
+  async function generateVideo() {
+    if (!user?.email) {
+      setMessage("Először jelentkezz be. Emaillel kapsz egy biztonságos belépési linket.");
+      scrollToGenerator();
+      return;
+    }
+
+    if (!image) {
+      setMessage("Először tölts fel egy képet. Erre készül majd a cinematic AI videó.");
+      return;
+    }
+
+    if (creditsLeft !== null && creditsLeft < currentVideoMode.credits) {
+      setMessage("Nincs elég kredited ehhez a videóhoz. Válassz kreditcsomagot az áraknál.");
+      scrollToPricing();
+      return;
+    }
+
+    setLoading(true);
+    setMessage("A Képlabor most filmes jelenetté alakítja a képed...");
+    setVideoUrl("");
+
+    try {
+      const formData = new FormData();
+
+      formData.append("email", user.email);
+      formData.append("text", text || currentExperience?.prompt || "");
+      formData.append("category", category);
+      formData.append("template", template);
+      formData.append("video_mode", videoMode);
+
+      if (image) {
+        formData.append("image_file", image);
+      }
+
+      const res = await fetch(`${API_URL}/generate-from-image`, {
+        method: "POST",
+        headers: {
+          "x-app-secret": APP_SECRET,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        if (data.error === "no_credits") {
+          setMessage("Nincs elég kredited a generáláshoz.");
+          scrollToPricing();
+        } else {
+          setMessage("Hiba: " + data.error);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      setVideoUrl(data.download);
+      setCreditsLeft(data.credits_left);
+      setMessage("Elkészült a cinematic AI videód.");
+    } catch (err) {
+      setMessage("Szerver hiba generálás közben.");
+    }
+
+    setLoading(false);
+  }
+
+  function scrollToGenerator() {
+    document.getElementById("generator")?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }
+
+  function scrollToPricing() {
+    document.getElementById("pricing")?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }
+
+  function selectExperience(item) {
+    setCategory(item.id);
+    setText(item.prompt);
+  }
 
   const BeforeAfterBlock = ({ mobile = false }) => (
-    <div className="relative">
+    <div className="relative mx-auto max-w-[640px] lg:max-w-none lg:translate-x-[-10px] lg:scale-[0.96]">
       <div className="absolute -inset-5 rounded-[42px] bg-gradient-to-r from-violet-600/25 via-cyan-500/10 to-fuchsia-500/20 blur-3xl" />
 
       <div className="relative rounded-[32px] border border-white/10 bg-black/30 p-3 md:p-4 backdrop-blur-xl shadow-2xl">
@@ -324,8 +390,9 @@ export default function App() {
             <img
               src="/oldal.png"
               className={`w-full rounded-3xl border border-white/10 object-cover shadow-2xl ${
-                mobile ? "h-[230px]" : "h-[340px]"
+                mobile ? "h-[220px]" : "h-[320px]"
               }`}
+              alt="Képlabor before példa"
             />
           </div>
 
@@ -345,8 +412,9 @@ export default function App() {
               muted
               loop
               playsInline
+              preload="metadata"
               className={`w-full rounded-3xl border border-cyan-400/25 object-cover shadow-2xl ${
-                mobile ? "h-[230px]" : "h-[340px]"
+                mobile ? "h-[220px]" : "h-[320px]"
               }`}
             />
           </div>
@@ -355,8 +423,8 @@ export default function App() {
         <div className="grid grid-cols-3 gap-3">
           {[
             ["1 kép", "feltöltés"],
-            ["AI", "mozgás"],
-            ["HD", "export"],
+            ["AI", "filmes mozgás"],
+            ["6–8 mp", "videó"],
           ].map(([top, bottom]) => (
             <div
               key={top}
@@ -373,11 +441,75 @@ export default function App() {
     </div>
   );
 
-  const scrollToGenerator = () => {
-    document.getElementById("generator")?.scrollIntoView({
-      behavior: "smooth",
-    });
-  };
+  const AccountBox = () => (
+    <div className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5 backdrop-blur">
+      {user ? (
+        <div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-300">
+                Belépve
+              </div>
+              <div className="mt-1 max-w-[240px] truncate text-sm text-white/80">
+                {user.email}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-right">
+              <div className="text-xs text-cyan-200">Kreditek</div>
+              <div className="text-2xl font-black text-white">
+                {creditsLeft ?? "—"}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => checkCredits(user.email)}
+              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-bold text-zinc-200 hover:border-white/25"
+            >
+              Frissítés
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-bold text-zinc-200 hover:border-white/25"
+            >
+              Kilépés
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div className="mb-4">
+            <div className="mb-2 text-lg font-black">
+              Belépés vagy ingyenes fiók
+            </div>
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Add meg az emailed, küldünk egy biztonságos belépési linket.
+              Nincs jelszó, nincs bonyolult regisztráció.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              type="email"
+              placeholder="email címed"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-cyan-400"
+            />
+
+            <button
+              onClick={handleLogin}
+              className="rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-violet-900/30 transition hover:scale-[1.02]"
+            >
+              Link küldése
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#050816] text-white">
@@ -388,15 +520,15 @@ export default function App() {
       </div>
 
       <div className="relative mx-auto max-w-7xl px-5 py-6 md:px-6 md:py-8">
-        <nav className="mb-8 flex items-center justify-between md:mb-14">
+        <nav className="mb-8 flex items-center justify-between gap-3 md:mb-14">
           <button
             onClick={scrollToGenerator}
-            className="group flex items-center gap-3"
+            className="group flex min-w-0 items-center gap-3"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-xl shadow-lg shadow-violet-900/40">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-xl shadow-lg shadow-violet-900/40">
               ✦
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="bg-gradient-to-r from-white via-violet-200 to-cyan-300 bg-clip-text text-left text-2xl font-black tracking-tight text-transparent md:text-3xl">
                 Képlabor
               </h1>
@@ -413,49 +545,45 @@ export default function App() {
             <button onClick={scrollToGenerator} className="hover:text-white">
               Generátor
             </button>
-            <button className="hover:text-white">Árak</button>
+            <button onClick={scrollToPricing} className="hover:text-white">
+              Árak
+            </button>
             <button className="hover:text-white">Béta</button>
           </div>
 
           {user ? (
-  <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur">
-    <div className="hidden max-w-[180px] truncate text-sm text-zinc-300 md:block">
-      {user.email}
-    </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur">
+              <div className="hidden md:block">
+                <div className="max-w-[170px] truncate text-xs text-zinc-300">
+                  {user.email}
+                </div>
+                <div className="text-[11px] text-cyan-300">
+                  {creditsLeft ?? "—"} kredit
+                </div>
+              </div>
 
-    <button
-      onClick={buyCredits}
-      disabled={buying}
-      className="rounded-xl bg-white px-3 py-2 text-xs font-black text-black transition hover:scale-105 disabled:opacity-60 md:text-sm"
-    >
-      {buying ? "..." : "Kredit"}
-    </button>
+              <button
+                onClick={scrollToPricing}
+                className="rounded-xl bg-white px-3 py-2 text-xs font-black text-black transition hover:scale-105 md:text-sm"
+              >
+                Kredit
+              </button>
 
-    <button
-      onClick={handleLogout}
-      className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:text-white md:text-sm"
-    >
-      Kilépés
-    </button>
-  </div>
-) : (
-  <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur">
-    <input
-      type="email"
-      placeholder="Email"
-      value={email}
-      onChange={(e) => setEmail(e.target.value)}
-      className="w-[120px] rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500 focus:border-cyan-400 md:w-[210px] md:text-sm"
-    />
-
-    <button
-      onClick={handleLogin}
-      className="rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 px-3 py-2 text-xs font-black text-white shadow-lg shadow-violet-900/30 transition hover:scale-105 md:px-4 md:text-sm"
-    >
-      Belépés
-    </button>
-  </div>
-)}
+              <button
+                onClick={handleLogout}
+                className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:text-white md:text-sm"
+              >
+                Kilépés
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={scrollToGenerator}
+              className="rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-4 py-3 text-xs font-black text-white shadow-lg shadow-violet-900/30 transition hover:scale-105 md:px-5 md:text-sm"
+            >
+              Belépés / Regisztráció
+            </button>
+          )}
         </nav>
 
         <section className="relative mb-16 overflow-hidden rounded-[36px] border border-white/10 bg-black/30 px-5 py-7 shadow-2xl backdrop-blur lg:hidden">
@@ -471,7 +599,7 @@ export default function App() {
 
           <div className="relative z-10">
             <div className="mb-5 inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 backdrop-blur">
-              🇭🇺 Magyar AI élményvideó
+              🇭🇺 Magyar AI cinematic élmény
             </div>
 
             <h2 className="mb-5 text-5xl font-black leading-[0.95]">
@@ -482,8 +610,8 @@ export default function App() {
             </h2>
 
             <p className="mb-5 text-lg leading-relaxed text-zinc-300">
-              Emlék, fantasy, szerelem vagy cinematic vibe — feltöltöd a képet,
-              kiválasztod az élményt, és készül a mozgó jelenet.
+              Nem kell promptot írnod. Feltöltöd a képet, kiválasztod a
+              hangulatot, és a Képlabor filmes AI videót készít belőle.
             </p>
 
             <div className="mb-6 rounded-2xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3 text-sm text-yellow-200">
@@ -495,11 +623,14 @@ export default function App() {
                 onClick={scrollToGenerator}
                 className="rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-4 font-black shadow-lg shadow-violet-900/40"
               >
-                Jelenetet készítek →
+                Képet töltök fel →
               </button>
 
-              <button className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-bold backdrop-blur">
-                Példák ▶
+              <button
+                onClick={scrollToPricing}
+                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-bold backdrop-blur"
+              >
+                Árak
               </button>
             </div>
 
@@ -535,9 +666,8 @@ export default function App() {
             </h2>
 
             <p className="mb-6 max-w-2xl text-xl leading-relaxed text-zinc-300">
-              Csak feltöltöd a képet, kiválasztod az
-              élményt, és a Képlabor filmes, érzelmes vagy fantasy hangulatú
-              videót készít belőle.
+              Kép feltöltés, hangulatválasztás, generálás. A filmes promptokat
+              a Képlabor rakja össze helyetted.
             </p>
 
             <div className="mb-9 inline-block rounded-2xl border border-yellow-400/20 bg-yellow-400/10 px-4 py-3 text-sm text-yellow-200 backdrop-blur">
@@ -552,13 +682,16 @@ export default function App() {
                 Saját jelenetet kérek →
               </button>
 
-              <button className="rounded-2xl border border-white/10 bg-white/5 px-8 py-4 font-bold backdrop-blur transition hover:border-white/30">
-                Videó példák ▶
+              <button
+                onClick={scrollToPricing}
+                className="rounded-2xl border border-white/10 bg-white/5 px-8 py-4 font-bold backdrop-blur transition hover:border-white/30"
+              >
+                Árak megtekintése
               </button>
             </div>
 
             <div className="grid max-w-2xl grid-cols-3 gap-3">
-              {["Nincs prompt hiba", "Preset alapú flow", "Cinematic output"].map(
+              {["Nincs prompt hiba", "Preset alapú flow", "6–8 mp cinematic"].map(
                 (item) => (
                   <div
                     key={item}
@@ -605,8 +738,8 @@ export default function App() {
             </div>
 
             <p className="max-w-xl text-zinc-400">
-              A Képlabor előre felépített cinematic
-              élményekkel dolgozik, hogy ne tudja elrontani.
+              Előre felépített cinematic élményekkel dolgozik, hogy ne kelljen
+              technikai promptokkal bajlódni.
             </p>
           </div>
 
@@ -615,11 +748,8 @@ export default function App() {
               <button
                 key={item.id}
                 onClick={() => {
-                  setCategory(item.id);
-                  setText(item.prompt);
-                  document
-                    .getElementById("generator")
-                    ?.scrollIntoView({ behavior: "smooth" });
+                  selectExperience(item);
+                  scrollToGenerator();
                 }}
                 className={`group relative min-h-[220px] overflow-hidden rounded-[32px] border p-6 text-left transition hover:-translate-y-1 ${
                   category === item.id
@@ -659,37 +789,58 @@ export default function App() {
                 Fotóból mozgó élmény.
               </h3>
               <p className="text-zinc-400">
-                A cél: minél kevesebb döntés, minél erősebb végeredmény.
+                Jelentkezz be, tölts fel egy képet, válassz hangulatot, és indulhat a cinematic AI generálás.
               </p>
             </div>
 
             <div className="space-y-6">
+              <AccountBox />
+
               <div>
-                <label className="mb-2 block text-sm text-zinc-400">
-                  Email
+                <label className="mb-4 block text-sm text-zinc-400">
+                  Kép feltöltése
                 </label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none transition focus:border-cyan-400"
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={checkCredits}
-                  className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 font-bold transition hover:border-white/25"
-                >
-                  Kredit ellenőrzés
-                </button>
+                <label className="group flex min-h-[230px] cursor-pointer flex-col items-center justify-center rounded-[32px] border border-dashed border-cyan-400/30 bg-black/30 p-6 text-center transition hover:border-cyan-300 hover:bg-cyan-400/5">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
 
-                <button
-                  onClick={buyCredits}
-                  disabled={buying}
-                  className="rounded-2xl bg-white px-5 py-4 font-black text-black transition hover:scale-[1.02] disabled:opacity-60"
-                >
-                  Kredit vásárlás
-                </button>
+                      if (file) {
+                        setImage(file);
+                        setImagePreview(URL.createObjectURL(file));
+                      }
+                    }}
+                    className="hidden"
+                  />
+
+                  {imagePreview ? (
+                    <div className="w-full">
+                      <img
+                        src={imagePreview}
+                        className="mx-auto max-h-[260px] w-full rounded-3xl object-cover"
+                        alt="Feltöltött kép előnézet"
+                      />
+                      <div className="mt-4 text-sm font-bold text-cyan-300">
+                        Kép kiválasztva — kattints ide a cseréhez
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-600 to-cyan-500 text-3xl shadow-lg shadow-violet-900/40 transition group-hover:scale-105">
+                        📸
+                      </div>
+                      <div className="mb-2 text-xl font-black">
+                        Kattints ide a kép feltöltéséhez
+                      </div>
+                      <div className="max-w-sm text-sm leading-relaxed text-zinc-400">
+                        Portré, családi fotó, termékkép, autó, ékszer vagy bármilyen jelenet, amit mozgó cinematic videóvá alakítanál.
+                      </div>
+                    </>
+                  )}
+                </label>
               </div>
 
               <div>
@@ -701,10 +852,7 @@ export default function App() {
                   {experiences.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => {
-                        setCategory(item.id);
-                        setText(item.prompt);
-                      }}
+                      onClick={() => selectExperience(item)}
                       className={`rounded-3xl border p-5 text-left transition ${
                         category === item.id
                           ? "border-cyan-400 bg-cyan-400/10"
@@ -724,35 +872,18 @@ export default function App() {
 
               <div>
                 <label className="mb-2 block text-sm text-zinc-400">
-                  Rövid kívánság
+                  Extra kérés — opcionális
                 </label>
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  rows="5"
-                  placeholder="Példa: sétáljanak kézen fogva egy varázslatos erdőben..."
+                  rows="4"
+                  placeholder="Példa: legyen lassú kameramozgás, szél fújja a haját, prémium reklámfilm hangulat..."
                   className="w-full rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none transition focus:border-cyan-400"
                 />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm text-zinc-400">
-                  Kép feltöltése
-                </label>
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-
-                    if (file) {
-                      setImage(file);
-                      setImagePreview(URL.createObjectURL(file));
-                    }
-                  }}
-                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-5 py-4 text-zinc-300"
-                />
+                <p className="mt-2 text-xs text-zinc-500">
+                  Nem kötelező. A filmes alap promptot a kiválasztott preset adja.
+                </p>
               </div>
 
               <div>
@@ -780,7 +911,7 @@ export default function App() {
 
               <div>
                 <label className="mb-4 block text-sm text-zinc-400">
-                  Videó hossz / mód
+                  Videó hossz
                 </label>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -803,7 +934,7 @@ export default function App() {
                         </div>
 
                         <div className="whitespace-nowrap font-black text-cyan-300">
-                          {item.credits}
+                          {item.label}
                         </div>
                       </div>
                     </button>
@@ -812,8 +943,7 @@ export default function App() {
               </div>
 
               <div className="rounded-3xl border border-yellow-400/20 bg-yellow-400/10 p-5 text-sm leading-relaxed text-yellow-100">
-                A Képlabor jelenleg korai béta. A nyilvános generálás még nem
-                végleges szolgáltatás, a funkciók tesztüzemben működnek.
+                A Képlabor jelenleg korai béta. A generált videók minősége képtől és jelenettől függhet.
               </div>
 
               <button
@@ -821,18 +951,14 @@ export default function App() {
                 disabled={loading}
                 className="w-full rounded-3xl bg-gradient-to-r from-violet-600 to-cyan-500 py-5 text-xl font-black shadow-lg shadow-violet-900/40 transition hover:scale-[1.015] disabled:opacity-60"
               >
-                {loading ? "Jelenet készítése..." : "✨ Jelenet készítése"}
+                {loading
+                  ? "🎬 Jelenet készítése..."
+                  : `✨ Jelenet készítése — ${currentVideoMode?.label}`}
               </button>
 
               {message && (
                 <div className="rounded-2xl border border-white/10 bg-black/40 p-4 text-zinc-300">
                   {message}
-                </div>
-              )}
-
-              {creditsLeft !== null && (
-                <div className="text-sm text-zinc-400">
-                  Maradék kredit: {creditsLeft}
                 </div>
               )}
             </div>
@@ -852,6 +978,7 @@ export default function App() {
                   <img
                     src={imagePreview}
                     className="h-full w-full object-cover"
+                    alt="Feltöltött kép"
                   />
                 ) : (
                   <div className="px-8 text-center text-zinc-500">
@@ -885,7 +1012,7 @@ export default function App() {
                 <div className="rounded-3xl border border-white/10 bg-black/30 p-5">
                   <div className="mb-1 text-sm text-zinc-500">Mód</div>
                   <div className="text-lg font-black">
-                    {videoModes.find((m) => m.id === videoMode)?.title}
+                    {currentVideoMode?.title}
                   </div>
                 </div>
               </div>
@@ -895,12 +1022,103 @@ export default function App() {
                   termékirány
                 </div>
                 <p className="leading-relaxed text-zinc-300">
-                  A cél az, hogy egy
-                  képből cinematic, érzelmes vagy fantasy élményt kapjon pár
-                  kattintással.
+                  A cél az, hogy egy képből cinematic, érzelmes vagy fantasy élményt kapjon pár kattintással — technikai AI dashboard nélkül.
                 </p>
               </div>
+
+              <div className="rounded-[32px] border border-white/10 bg-black/30 p-6">
+                <div className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-violet-300">
+                  Gyors árlogika
+                </div>
+                <div className="space-y-3 text-sm text-zinc-300">
+                  <div className="flex justify-between gap-3">
+                    <span>6 mp cinematic klip</span>
+                    <strong className="text-cyan-300">1 kredit</strong>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span>8 mp prémium jelenet</span>
+                    <strong className="text-cyan-300">2 kredit</strong>
+                  </div>
+                  <button
+                    onClick={scrollToPricing}
+                    className="mt-3 w-full rounded-2xl bg-white px-4 py-3 font-black text-black transition hover:scale-[1.02]"
+                  >
+                    Kreditcsomagok megnyitása
+                  </button>
+                </div>
+              </div>
             </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="mb-20">
+          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="mb-3 text-sm font-bold uppercase tracking-[0.3em] text-cyan-300">
+                árak és kreditek
+              </p>
+              <h3 className="text-4xl font-black md:text-5xl">
+                Egyszerű kreditrendszer.
+              </h3>
+            </div>
+
+            <p className="max-w-xl text-zinc-400">
+              Csak akkor fizetsz, amikor tényleg videót szeretnél készíteni.
+              Nincs havi előfizetés az induló MVP-ben.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            {pricingPackages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className={`relative overflow-hidden rounded-[34px] border p-6 shadow-2xl backdrop-blur ${
+                  pkg.highlight
+                    ? "border-cyan-400/50 bg-cyan-400/10"
+                    : "border-white/10 bg-white/[0.035]"
+                }`}
+              >
+                {pkg.highlight && (
+                  <div className="absolute right-4 top-4 rounded-full bg-cyan-300 px-3 py-1 text-xs font-black text-black">
+                    ajánlott
+                  </div>
+                )}
+
+                <div className="mb-5 inline-flex rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs font-bold text-zinc-300">
+                  {pkg.badge}
+                </div>
+
+                <h4 className="mb-2 text-3xl font-black">{pkg.title}</h4>
+
+                <div className="mb-2 text-4xl font-black">
+                  {pkg.price}
+                </div>
+
+                <div className="mb-5 text-cyan-300">
+                  {pkg.credits} kredit
+                </div>
+
+                <p className="mb-6 min-h-[72px] leading-relaxed text-zinc-300">
+                  {pkg.desc}
+                </p>
+
+                <button
+                  onClick={() => buyCredits(pkg.id)}
+                  disabled={buying}
+                  className={`w-full rounded-2xl px-5 py-4 font-black transition hover:scale-[1.02] disabled:opacity-60 ${
+                    pkg.highlight
+                      ? "bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-lg shadow-cyan-950/40"
+                      : "bg-white text-black"
+                  }`}
+                >
+                  {buying ? "Fizetés indítása..." : pkg.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-[30px] border border-white/10 bg-black/30 p-5 text-sm leading-relaxed text-zinc-400">
+            <strong className="text-white">Kredit használat:</strong> 6 mp videó = 1 kredit, 8 mp videó = 2 kredit. A 30 mp-es mód egyelőre nincs bekapcsolva, hogy az MVP gyorsabb és kiszámíthatóbb legyen.
           </div>
         </section>
 
@@ -917,9 +1135,7 @@ export default function App() {
             </h3>
 
             <p className="mx-auto mb-8 max-w-3xl text-lg leading-relaxed text-zinc-400">
-              Emlékekhez, szerelmes képekhez, fantasy jelenetekhez, cinematic
-              önarcképekhez és kreatív social videókhoz. Egyszerűen,
-              túlgondolás nélkül.
+              Emlékekhez, szerelmes képekhez, fantasy jelenetekhez, cinematic önarcképekhez és kreatív social videókhoz. Egyszerűen, túlgondolás nélkül.
             </p>
 
             <button
