@@ -441,76 +441,6 @@ export default function App() {
     </div>
   );
 
-  const AccountBox = () => (
-    <div className="rounded-[30px] border border-white/10 bg-white/[0.035] p-5 backdrop-blur">
-      {user ? (
-        <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-300">
-                Belépve
-              </div>
-              <div className="mt-1 max-w-[240px] truncate text-sm text-white/80">
-                {user.email}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-right">
-              <div className="text-xs text-cyan-200">Kreditek</div>
-              <div className="text-2xl font-black text-white">
-                {creditsLeft ?? "—"}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => checkCredits(user.email)}
-              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-bold text-zinc-200 hover:border-white/25"
-            >
-              Frissítés
-            </button>
-            <button
-              onClick={handleLogout}
-              className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm font-bold text-zinc-200 hover:border-white/25"
-            >
-              Kilépés
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <div className="mb-4">
-            <div className="mb-2 text-lg font-black">
-              Belépés vagy ingyenes fiók
-            </div>
-            <p className="text-sm leading-relaxed text-zinc-400">
-              Add meg az emailed, küldünk egy biztonságos belépési linket.
-              Nincs jelszó, nincs bonyolult regisztráció.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              type="email"
-              placeholder="email címed"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-cyan-400"
-            />
-
-            <button
-              onClick={handleLogin}
-              className="rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-violet-900/30 transition hover:scale-[1.02]"
-            >
-              Link küldése
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="min-h-screen overflow-hidden bg-[#050816] text-white">
       <div className="fixed inset-0 pointer-events-none">
@@ -794,7 +724,74 @@ export default function App() {
             </div>
 
             <div className="space-y-6">
-              <AccountBox />
+              <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur md:p-6">
+  <div className="mb-3">
+    <h3 className="text-2xl font-black">
+      {user ? "Fiók" : "Belépés vagy ingyenes fiók"}
+    </h3>
+
+    <p className="mt-2 text-zinc-400">
+      {user
+        ? "Be vagy jelentkezve a Képlaborba."
+        : "Add meg az emailed, küldünk egy biztonságos belépési linket. Nincs jelszó, nincs bonyolult regisztráció."}
+    </p>
+  </div>
+
+  {user ? (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+        <div className="mb-1 text-sm text-cyan-200">
+          Bejelentkezve
+        </div>
+
+        <div className="truncate font-bold text-white">
+          {user.email}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={checkCredits}
+          className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 font-bold transition hover:border-white/30"
+        >
+          Kreditek
+        </button>
+
+        <button
+          onClick={handleLogout}
+          className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-4 font-bold text-red-200 transition hover:bg-red-400/20"
+        >
+          Kilépés
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      <input
+        type="email"
+        placeholder="Email címed"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        autoComplete="email"
+        autoCorrect="off"
+        autoCapitalize="none"
+        spellCheck={false}
+        className="w-full rounded-2xl border border-cyan-400/60 bg-black/40 px-5 py-4 text-lg text-white outline-none transition focus:border-cyan-300"
+      />
+
+      <button
+        onClick={handleLogin}
+        className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-500 px-5 py-4 text-lg font-black shadow-lg shadow-violet-900/40 transition hover:scale-[1.01]"
+      >
+        Link küldése
+      </button>
+
+      <div className="text-center text-sm text-zinc-500">
+        🔒 Biztonságos és jelszómentes belépés
+      </div>
+    </div>
+  )}
+</div>
 
               <div>
                 <label className="mb-4 block text-sm text-zinc-400">
