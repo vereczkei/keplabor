@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
 
 const API_URL =
   "https://vereczkeijanosgabor--video-test-fastapi-app.modal.run";
@@ -6,7 +7,10 @@ const API_URL =
 const APP_SECRET = "keplabor_titkos_2026_vedelem";
 
 export default function App() {
-  const [email, setEmail] = useState("teszt@test.com");
+
+  const [user, setUser] = useState(null);
+
+  const [email, setEmail] = useState("");
   const [text, setText] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -21,6 +25,55 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [buying, setBuying] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+
+      if (data.user?.email) {
+        setEmail(data.user.email);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+
+      if (session?.user?.email) {
+        setEmail(session.user.email);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function handleLogin() {
+    if (!email) {
+      setMessage("Adj meg email címet.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      setMessage("Belépési hiba.");
+      return;
+    }
+
+    setMessage("Belépési link elküldve emailben.");
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setUser(null);
+    setEmail("");
+  }
 
   async function checkCredits() {
     if (!email) {
@@ -54,12 +107,12 @@ export default function App() {
 
   async function buyCredits() {
     if (!email) {
-      setMessage("Először add meg az email címed.");
+      setMessage("Először jelentkezz be.");
       return;
     }
 
     setBuying(true);
-    setMessage("Stripe tesztfizetés indítása...");
+    setMessage("Stripe fizetés indítása...");
 
     try {
       const res = await fetch(`${API_URL}/buy-credits`, {
@@ -76,7 +129,7 @@ export default function App() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setMessage("Stripe hiba: " + (data.error || "ismeretlen hiba"));
+        setMessage("Stripe hiba.");
       }
     } catch (err) {
       setMessage("Stripe szerver hiba.");
@@ -87,7 +140,7 @@ export default function App() {
 
   async function generateVideo() {
     if (!email) {
-      setMessage("Adj meg email címet.");
+      setMessage("Először jelentkezz be.");
       return;
     }
 
@@ -364,13 +417,45 @@ export default function App() {
             <button className="hover:text-white">Béta</button>
           </div>
 
-          <button
-            onClick={buyCredits}
-            disabled={buying}
-            className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-black shadow-lg transition hover:scale-105 disabled:opacity-60 md:px-5"
-          >
-            {buying ? "Indítás..." : "Kreditek"}
-          </button>
+          {user ? (
+  <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur">
+    <div className="hidden max-w-[180px] truncate text-sm text-zinc-300 md:block">
+      {user.email}
+    </div>
+
+    <button
+      onClick={buyCredits}
+      disabled={buying}
+      className="rounded-xl bg-white px-3 py-2 text-xs font-black text-black transition hover:scale-105 disabled:opacity-60 md:text-sm"
+    >
+      {buying ? "..." : "Kredit"}
+    </button>
+
+    <button
+      onClick={handleLogout}
+      className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:text-white md:text-sm"
+    >
+      Kilépés
+    </button>
+  </div>
+) : (
+  <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur">
+    <input
+      type="email"
+      placeholder="Email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      className="w-[120px] rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500 focus:border-cyan-400 md:w-[210px] md:text-sm"
+    />
+
+    <button
+      onClick={handleLogin}
+      className="rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 px-3 py-2 text-xs font-black text-white shadow-lg shadow-violet-900/30 transition hover:scale-105 md:px-4 md:text-sm"
+    >
+      Belépés
+    </button>
+  </div>
+)}
         </nav>
 
         <section className="relative mb-16 overflow-hidden rounded-[36px] border border-white/10 bg-black/30 px-5 py-7 shadow-2xl backdrop-blur lg:hidden">
