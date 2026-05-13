@@ -202,9 +202,10 @@ export default function App() {
     });
 
     if (error) {
-      setMessage("Belépési hiba. Ellenőrizd az email címet.");
-      return;
-    }
+  console.log(error);
+  setMessage("Belépési hiba: " + error.message);
+  return;
+}
 
     setMessage("Elküldtük a biztonságos belépési linket emailben.");
   }
