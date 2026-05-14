@@ -533,7 +533,14 @@ def generate_with_veo_lite(
         operation = client.operations.get(operation)
 
     if not operation.response or not operation.response.generated_videos:
-        raise RuntimeError("A Veo nem adott vissza videót.")
+        print("FULL VEO OPERATION:", operation)
+        print("VEO ERROR:", getattr(operation, "error", None))
+        print("VEO RESPONSE:", getattr(operation, "response", None))
+
+        raise RuntimeError(
+            f"A Veo nem adott vissza videót. Error: {getattr(operation, 'error', None)}"
+    )
+        
 
     generated_video = operation.response.generated_videos[0]
     client.files.download(file=generated_video.video)
