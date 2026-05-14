@@ -1031,11 +1031,11 @@ export default function App() {
                 <div className="space-y-3 text-sm text-zinc-300">
                   <div className="flex justify-between gap-3">
                     <span>6 mp cinematic klip</span>
-                    <strong className="text-cyan-300">1 kredit</strong>
+                    <strong className="text-cyan-300">3 kredit</strong>
                   </div>
                   <div className="flex justify-between gap-3">
                     <span>8 mp prémium jelenet</span>
-                    <strong className="text-cyan-300">2 kredit</strong>
+                    <strong className="text-cyan-300">4 kredit</strong>
                   </div>
                   <button
                     onClick={scrollToPricing}
@@ -1116,7 +1116,7 @@ export default function App() {
           </div>
 
           <div className="mt-6 rounded-[30px] border border-white/10 bg-black/30 p-5 text-sm leading-relaxed text-zinc-400">
-            <strong className="text-white">Kredit használat:</strong> 6 mp videó = 1 kredit, 8 mp videó = 2 kredit. A 30 mp-es mód egyelőre nincs bekapcsolva, hogy az MVP gyorsabb és kiszámíthatóbb legyen.
+            <strong className="text-white">Kredit használat:</strong> 6 mp videó = 3 kredit, 8 mp videó = 4 kredit. A 30 mp-es mód egyelőre nincs bekapcsolva, hogy az MVP gyorsabb és kiszámíthatóbb legyen.
           </div>
         </section>
 
