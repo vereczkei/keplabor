@@ -4,7 +4,7 @@ import { supabase } from "./lib/supabase";
 const API_URL =
   "https://vereczkeijanosgabor--video-test-fastapi-app.modal.run";
 
-const APP_SECRET = "keplabor_titkos_2026_vedelem";
+const APP_SECRET = "keplabor2026supersecret";
 
 export default function App() {
   const [user, setUser] = useState(null);

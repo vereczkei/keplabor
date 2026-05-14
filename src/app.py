@@ -1,9 +1,12 @@
 import os
 import uuid
+import time
 import subprocess
 import modal
 import stripe
-from openai import OpenAI
+
+from google import genai
+from google.genai import types
 
 from fastapi import (
     FastAPI,
@@ -19,6 +22,12 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # =========================
+# SAJÁT TESZT EMAIL
+# =========================
+
+MY_TEST_EMAIL = "vereczkeijanosgabor@gmail.com"
+
+# =========================
 # MODAL IMAGE
 # =========================
 
@@ -29,7 +38,7 @@ image = (
         "fastapi[standard]",
         "stripe",
         "pillow",
-        "openai",
+        "google-genai",
     )
 )
 
@@ -100,8 +109,6 @@ VIDEO_MODES = {
         "credit_cost": 2,
         "label": "8 mp prémium jelenet",
     },
-
-    # Régi frontend kompatibilitás
     "simple_clip": {
         "duration": 6,
         "credit_cost": 1,
@@ -221,13 +228,24 @@ def get_stripe():
     return stripe
 
 
-def get_openai_client():
-    return OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+def get_gemini_client():
+    return genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 
 def require_app_secret(x_app_secret: str = Header(None)):
     if x_app_secret != os.environ["APP_SECRET"]:
         raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def require_test_email(email: str):
+    if not email:
+        raise HTTPException(status_code=400, detail="missing_email")
+
+    if email.strip().lower() != MY_TEST_EMAIL.strip().lower():
+        raise HTTPException(
+            status_code=403,
+            detail="A Veo teszt jelenleg csak belső használatra engedélyezett.",
+        )
 
 
 def clean_text(text: str):
@@ -480,26 +498,46 @@ def create_fallback_preview_video(
     subprocess.run(compress_cmd, check=True)
 
 
-def generate_with_veo_placeholder(
+def generate_with_veo_lite(
     image_path: str | None,
     prompt: str,
     final_video_path: str,
     duration: int,
 ):
-    """
-    IDE JÖN MAJD A VALÓDI VEO 3.1 LITE PRODUCTION HÍVÁS.
+    if duration not in [6, 8]:
+        raise ValueError("Veo Lite tesztnél csak 6 vagy 8 mp engedélyezett.")
 
-    Jelenleg fallback preview videót készítünk ffmpeg-gel,
-    hogy a teljes SaaS flow tesztelhető legyen:
-    login -> kredit -> Stripe -> upload -> generate -> download.
+    client = get_gemini_client()
 
-    Amikor bekötöd a Veo-t:
-    - image_path: feltöltött kép elérési útja
-    - prompt: backend cinematic director prompt
-    - duration: 6 vagy 8
-    - final_video_path: ide mentsd a kész mp4-et
-    """
-    raise NotImplementedError("Veo production call még nincs bekötve.")
+    config = types.GenerateVideosConfig(
+        number_of_videos=1,
+        duration_seconds=duration,
+        aspect_ratio="9:16",
+        resolution="720p",
+        person_generation="allow_adult",
+    )
+
+    image_input = None
+    if image_path:
+        image_input = types.Image.from_file(location=image_path)
+
+    operation = client.models.generate_videos(
+        model="veo-3.1-lite-generate-preview",
+        prompt=prompt,
+        image=image_input,
+        config=config,
+    )
+
+    while not operation.done:
+        time.sleep(10)
+        operation = client.operations.get(operation)
+
+    if not operation.response or not operation.response.generated_videos:
+        raise RuntimeError("A Veo nem adott vissza videót.")
+
+    generated_video = operation.response.generated_videos[0]
+    client.files.download(file=generated_video.video)
+    generated_video.video.save(final_video_path)
 
 
 def render_video(
@@ -510,6 +548,8 @@ def render_video(
     video_mode: str = "clip_6s",
     image_path: str | None = None,
 ):
+    require_test_email(email)
+
     settings = get_video_settings(video_mode)
 
     if settings.get("error"):
@@ -538,29 +578,24 @@ def render_video(
         user_extra_text=text,
     )
 
-    caption_text = create_caption_text(category, video_mode)
-
     try:
-        # Később itt lesz a valódi Veo hívás.
-        # Most direkt fallback megy, hogy a flow működjön.
-        create_fallback_preview_video(
+        generate_with_veo_lite(
             image_path=image_path,
+            prompt=cinematic_prompt,
             final_video_path=final_video_path,
-            caption_text=caption_text,
-            template=template,
             duration=duration,
         )
 
-        # Kredit levonás csak sikeres videókészítés után.
         users_db[email] = credits - credit_cost
         video_volume.commit()
 
     except Exception as e:
-        print("VIDEO GENERATION ERROR:", e)
+        print("VEO GENERATION ERROR:", e)
         return {
             "error": "generation_failed",
             "message": str(e),
             "credits_left": credits,
+            "engine": "veo_3_1_lite",
         }
 
     return {
@@ -574,7 +609,7 @@ def render_video(
         "credits_left": int(users_db.get(email, 0)),
         "cinematic_prompt": cinematic_prompt,
         "status": "ready",
-        "engine": "ffmpeg_fallback_until_veo_connected",
+        "engine": "veo_3_1_lite",
     }
 
 
@@ -587,6 +622,8 @@ def home():
     return {
         "status": "ok",
         "message": "Képlabor backend fut",
+        "engine": "veo_3_1_lite",
+        "test_email_only": MY_TEST_EMAIL,
         "features": [
             "credits",
             "stripe_packages",
@@ -595,7 +632,7 @@ def home():
             "cinematic_prompt_engine",
             "image_upload",
             "modal_volume_video_storage",
-            "veo_ready_placeholder",
+            "veo_3_1_lite_real_generation",
         ],
         "packages": CREDIT_PACKAGES,
         "video_modes": VIDEO_MODES,
@@ -723,6 +760,37 @@ async def check_credits(
     }
 
 
+@api.post("/admin-add-credits")
+async def admin_add_credits(
+    request: Request,
+    x_app_secret: str = Header(None),
+):
+    require_app_secret(x_app_secret)
+
+    data = await request.json()
+    email = data.get("email")
+    amount = int(data.get("amount", 0))
+
+    if not email:
+        return {"error": "missing_email"}
+
+    if email.strip().lower() != MY_TEST_EMAIL.strip().lower():
+        return {"error": "only_test_email_allowed"}
+
+    if amount <= 0 or amount > 100:
+        return {"error": "invalid_amount"}
+
+    current = int(users_db.get(email, 0))
+    users_db[email] = current + amount
+
+    return {
+        "ok": True,
+        "email": email,
+        "credits_added": amount,
+        "credits": int(users_db.get(email, 0)),
+    }
+
+
 @api.post("/text-to-video")
 async def text_to_video(
     request: Request,
@@ -821,11 +889,12 @@ def download(video_id: str):
     secrets=[
         modal.Secret.from_name("stripe-secret"),
         modal.Secret.from_name("app-auth"),
-        modal.Secret.from_name("openai-secret"),
+        modal.Secret.from_name("gemini-secret"),
     ],
     volumes={
         VIDEO_DIR: video_volume,
     },
+    timeout=900,
 )
 @modal.asgi_app()
 def fastapi_app():
