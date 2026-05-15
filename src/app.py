@@ -1,6 +1,7 @@
 import os
 import uuid
 import time
+import json
 import subprocess
 import modal
 import stripe
@@ -124,7 +125,8 @@ VIDEO_MODES = {
 DISABLED_VIDEO_MODES = {"narrated_ad"}
 
 # =========================
-# KÉPLABOR CINEMATIC PROMPT ENGINE V2
+# PROMPTMENTES KÉPLABOR ENGINE V3
+# Lite marad, audio marad, prompt rövidebb és mozgáscentrikus
 # =========================
 
 ALLOWED_CATEGORIES = {
@@ -160,137 +162,156 @@ ALLOWED_MOODS = {
     "calm",
 }
 
-THEME_PRESETS = {
+THEME_BLUEPRINTS = {
     "luxury": {
-        "camera": "Smooth slow tracking shot with subtle dolly-in movement",
-        "scene": "premium luxury commercial atmosphere",
-        "lighting": "golden rim light, glossy reflections, soft cinematic highlights",
-        "motion": "subtle wind, elegant fabric movement, slow confident reveal",
-        "audio": "soft premium ambient music, subtle camera flash sounds if appropriate",
-        "style": "high-end fashion advertisement, expensive brand film, polished realism",
+        "goal": "premium luxury commercial image-to-video scene",
+        "shot": "medium cinematic portrait or product-style hero shot",
+        "camera": "slow smooth tracking shot with subtle dolly-in movement",
+        "motion": "subtle wind, elegant fabric movement, gentle head or body motion, premium reveal",
+        "environment": "glossy reflections and high-end commercial atmosphere",
+        "lighting": "golden rim light, soft cinematic highlights, polished contrast",
+        "style": "luxury fashion advertisement, expensive brand film, clean polished realism",
+        "audio": "soft premium ambient music with elegant cinematic atmosphere",
+        "negative": "text, subtitles, logos, watermark, distorted face, broken hands, flicker, chaotic motion",
     },
     "love": {
-        "camera": "Soft handheld cinematic close-up with gentle push-in",
-        "scene": "romantic emotional moment with warm intimate atmosphere",
-        "lighting": "golden hour light, soft glow, gentle highlights on the face",
-        "motion": "slow natural movement, warm breeze, emotional micro expressions",
-        "audio": "soft romantic piano ambience, gentle natural background sound",
-        "style": "wedding film, emotional love story, elegant romantic realism",
-    },
-    "fantasy": {
-        "camera": "Floating cinematic camera movement with slow magical reveal",
-        "scene": "dreamlike fantasy environment surrounding the original subject",
-        "lighting": "soft magical glow, volumetric light, floating particles",
-        "motion": "subtle magical atmosphere, glowing particles, cinematic environmental movement",
-        "audio": "soft fantasy ambience, light magical shimmer, orchestral undertone",
-        "style": "epic fantasy film look, magical but realistic, elegant transformation",
+        "goal": "romantic cinematic image-to-video scene",
+        "shot": "soft medium close-up or gentle couple framing",
+        "camera": "slow emotional push-in with soft handheld cinematic feeling",
+        "motion": "natural smiles, subtle eye contact, gentle breeze, warm human micro movements",
+        "environment": "romantic atmosphere with soft background depth",
+        "lighting": "warm golden light, soft glow, gentle highlights on faces",
+        "style": "wedding film realism, intimate love story, elegant romantic cinematic look",
+        "audio": "soft romantic piano ambience with warm natural background sound",
+        "negative": "identity drift, swapped faces, distorted faces, text, logos, watermark, chaotic movement",
     },
     "memory": {
-        "camera": "Slow nostalgic camera push-in with gentle parallax",
-        "scene": "emotional memory scene based on the uploaded real photo",
+        "goal": "emotional memory film from a real photo",
+        "shot": "nostalgic medium shot with respectful composition",
+        "camera": "slow nostalgic push-in with gentle parallax",
+        "motion": "very subtle lifelike movement, soft background motion, gentle breathing or expression",
+        "environment": "warm memory atmosphere, realistic and respectful",
         "lighting": "soft warm natural light, nostalgic glow, delicate contrast",
-        "motion": "very subtle life-like movement, gentle breathing, soft background movement",
-        "audio": "soft emotional piano, warm ambient room tone",
-        "style": "respectful memory film, documentary emotional realism, no exaggeration",
+        "style": "documentary memory film, emotional realism, respectful family-photo atmosphere",
+        "audio": "soft emotional piano with warm ambient room tone",
+        "negative": "exaggerated fantasy, face distortion, identity drift, text, logos, watermark",
+    },
+    "fantasy": {
+        "goal": "magical fantasy cinematic scene based on the uploaded image",
+        "shot": "cinematic subject shot with magical background depth",
+        "camera": "floating cinematic camera movement with slow reveal",
+        "motion": "subtle glowing particles, gentle environmental motion, magical atmosphere around the subject",
+        "environment": "dreamlike fantasy world while keeping the uploaded subject recognizable",
+        "lighting": "soft magical glow, volumetric light, gentle highlights",
+        "style": "epic fantasy film look, magical but realistic, elegant transformation",
+        "audio": "soft fantasy ambience with light magical shimmer",
+        "negative": "overloaded effects, changed identity, distorted anatomy, text, logos, watermark",
     },
     "celebrity": {
-        "camera": "Red carpet cinematic tracking shot with controlled paparazzi energy",
-        "scene": "premium celebrity arrival scene, glamorous public moment",
-        "lighting": "flash photography, luxury night lighting, glossy reflections",
-        "motion": "hair and clothing move naturally, camera flashes, elegant walking or posing",
-        "audio": "distant crowd ambience, camera shutters, premium cinematic music",
-        "style": "glamour magazine commercial, red carpet film, realistic celebrity atmosphere",
+        "goal": "glamour celebrity cinematic scene",
+        "shot": "red carpet style medium shot",
+        "camera": "controlled tracking shot with subtle paparazzi energy",
+        "motion": "natural posing, camera flashes, subtle hair and clothing movement",
+        "environment": "premium celebrity arrival atmosphere",
+        "lighting": "flash photography, glossy night lights, luxury reflections",
+        "style": "glamour magazine commercial, red carpet film, premium realistic look",
+        "audio": "distant crowd ambience, camera shutters and premium cinematic music",
+        "negative": "real celebrity impersonation, identity replacement, distorted face, text, logos, watermark",
     },
     "product": {
-        "camera": "Macro cinematic product shot with smooth orbiting movement",
-        "scene": "premium product advertisement environment",
-        "lighting": "studio highlights, controlled reflections, clean shadows",
-        "motion": "slow product reveal, rotating light reflections, elegant background motion",
-        "audio": "clean premium product sound design, subtle whoosh, soft brand ambience",
+        "goal": "premium product reveal for ecommerce or ad creative",
+        "shot": "macro close-up opening shot or clean hero product shot",
+        "camera": "slow dolly out with subtle parallax and clean stabilization",
+        "motion": "slow product reveal, rotating light reflections, elegant background movement",
+        "environment": "clean premium studio or luxury commercial environment",
+        "lighting": "controlled studio lighting with glossy highlights and soft falloff",
         "style": "Apple-style clean commercial, luxury product film, minimal premium realism",
+        "audio": "clean premium product sound design with subtle whoosh and soft brand ambience",
+        "negative": "messy background, warped geometry, extra objects, text, logos, watermark",
     },
     "funny": {
-        "camera": "Dynamic social media camera movement with clear readable composition",
-        "scene": "playful viral cinematic moment",
-        "lighting": "bright clean lighting, colorful but premium look",
-        "motion": "expressive motion, fun reveal, but no chaotic distortion",
-        "audio": "light playful sound design, short viral-style music hit",
+        "goal": "playful social-ready cinematic moment",
+        "shot": "clear readable social media framing",
+        "camera": "dynamic but stable camera movement",
+        "motion": "fun reveal, expressive motion, playful energy without distortion",
+        "environment": "bright clean social video atmosphere",
+        "lighting": "clean bright lighting with colorful premium look",
         "style": "premium social media ad, playful but high-quality",
+        "audio": "light playful sound design with short viral-style music energy",
+        "negative": "chaotic motion, distorted face, broken anatomy, text, logos, watermark",
     },
     "cinematic": {
-        "camera": "Slow cinematic dolly-in with natural handheld realism",
-        "scene": "premium cinematic scene based on the uploaded image",
-        "lighting": "dramatic but tasteful film lighting, soft shadows, realistic highlights",
+        "goal": "premium cinematic image-to-video scene",
+        "shot": "tight medium cinematic shot",
+        "camera": "slow cinematic push-in with natural handheld realism",
         "motion": "natural subject movement, subtle background depth, elegant reveal",
-        "audio": "cinematic ambient music, natural environmental sound",
+        "environment": "movie-like atmosphere based on the uploaded image",
+        "lighting": "dramatic but tasteful film lighting, soft shadows, realistic highlights",
         "style": "movie trailer realism, premium film look, emotional visual storytelling",
+        "audio": "cinematic ambient music with natural environmental sound",
+        "negative": "distorted face, broken hands, flicker, text, subtitles, logos, watermark",
     },
 }
 
 TEMPLATE_LAYERS = {
-    "auto": "Let the AI director choose the best visual treatment while keeping the result premium and realistic.",
-    "luxury": "Increase premium brand feeling, glossy reflections, elegant highlights, high-end commercial polish.",
-    "dark-cinematic": "Use darker cinematic grading, dramatic shadows, controlled contrast, serious film atmosphere.",
-    "tiktok-fast": "Use stronger first-second visual impact, dynamic reveal, social media energy, but keep it clean and premium.",
-    "minimal": "Use clean composition, soft movement, minimal background complexity, elegant and simple premium result.",
-    "dreamy": "Use soft dreamlike glow, gentle bokeh, smooth floating movement, emotional atmosphere.",
+    "auto": "Use the best natural cinematic treatment for the uploaded photo.",
+    "luxury": "Add premium brand polish, glossy highlights and elegant commercial atmosphere.",
+    "dark-cinematic": "Use darker cinematic grading, controlled contrast and serious film mood.",
+    "tiktok-fast": "Use stronger first-second visual impact and social-ready motion while staying clean.",
+    "minimal": "Use clean composition, soft movement and minimal background complexity.",
+    "dreamy": "Use soft dreamlike glow, gentle bokeh and smooth floating movement.",
 }
 
 MOOD_LAYERS = {
-    "auto": "Mood should match the selected theme naturally.",
-    "emotional": "The mood is emotional, human, warm and meaningful.",
-    "epic": "The mood is epic, large-scale, powerful and cinematic.",
-    "dreamy": "The mood is dreamy, soft, magical and atmospheric.",
-    "dramatic": "The mood is dramatic, intense, premium and film-like.",
-    "romantic": "The mood is romantic, intimate, warm and beautiful.",
-    "premium": "The mood is premium, elegant, expensive and polished.",
-    "viral": "The mood is attention-grabbing, social-first and instantly impressive.",
-    "calm": "The mood is calm, soft, elegant and peaceful.",
+    "auto": "natural cinematic mood",
+    "emotional": "warm, human and emotional",
+    "epic": "large-scale, powerful and cinematic",
+    "dreamy": "soft, magical and atmospheric",
+    "dramatic": "serious, intense and film-like",
+    "romantic": "intimate, warm and romantic",
+    "premium": "elegant, expensive and polished",
+    "viral": "attention-grabbing and social-first",
+    "calm": "soft, peaceful and elegant",
 }
 
-VIDEO_MODE_PROMPTS = {
-    "clip_6s": "Create a clean 6-second cinematic moment with one strong visual idea and immediate wow effect.",
-    "clip_8s": "Create an 8-second premium cinematic scene with richer atmosphere, smoother build-up and stronger reveal.",
-    "simple_clip": "Create a clean 6-second cinematic moment with one strong visual idea and immediate wow effect.",
-    "short_ad": "Create an 8-second premium cinematic scene with richer atmosphere, smoother build-up and stronger reveal.",
+SCENE_ANALYSIS_FALLBACK = {
+    "main_subject": "the main subject from the uploaded image",
+    "scene_context": "the original scene from the uploaded image",
+    "visible_style": "realistic photo style",
+    "lighting": "the original lighting of the image",
+    "camera_angle": "natural camera angle",
+    "people_count": 0,
+    "safe_motion_ideas": [
+        "subtle natural movement",
+        "gentle camera motion",
+        "soft environmental motion",
+    ],
 }
 
-IDENTITY_LOCK_LAYER = """
-CRITICAL IMAGE CONSISTENCY RULES:
-- Use the uploaded image as the exact visual reference.
-- Preserve the person's face, identity, age impression, body shape, hairstyle and main clothing.
-- Do not replace the person with another model.
-- Do not change the main outfit unless the selected theme absolutely requires only subtle styling.
-- Keep the original pose and composition recognizable, but add cinematic motion.
-- If there is a product, car, pet, object or place in the image, preserve its core appearance.
-"""
-COUPLE_LAYER = """
-If multiple people are present:
-- preserve all faces and identities consistently
-- maintain relationship positioning and body proportions
-- do not replace either person
-- keep realistic interaction and natural eye contact
-- avoid morphing or identity drift between subjects
-"""
-
-QUALITY_LAYER = """
-QUALITY RULES:
-- Premium cinematic realism.
-- Natural camera motion.
-- No warped faces.
-- No broken hands.
-- No flickering.
-- No random text.
-- No subtitles.
-- No logos.
-- No watermark.
-- No UI elements.
-- No cheap fantasy overload.
-- No chaotic motion.
-- Clean composition.
-- Realistic lighting.
-- High-end commercial quality.
-"""
+SCENE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "main_subject": {"type": "string"},
+        "scene_context": {"type": "string"},
+        "visible_style": {"type": "string"},
+        "lighting": {"type": "string"},
+        "camera_angle": {"type": "string"},
+        "people_count": {"type": "integer"},
+        "safe_motion_ideas": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+    },
+    "required": [
+        "main_subject",
+        "scene_context",
+        "visible_style",
+        "lighting",
+        "camera_angle",
+        "people_count",
+        "safe_motion_ideas",
+    ],
+}
 
 # =========================
 # HELPERS
@@ -429,12 +450,59 @@ def choose_mood(text: str):
     return "auto"
 
 
+def analyze_image_for_video(image_path: str | None):
+    if not image_path:
+        return SCENE_ANALYSIS_FALLBACK
+
+    try:
+        client = get_gemini_client()
+        image_input = types.Image.from_file(location=image_path)
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                image_input,
+                (
+                    "Analyze this uploaded image for an image-to-video prompt compiler. "
+                    "Return only factual visual details useful for motion planning. "
+                    "Do not invent brand names, celebrity names, identities or unsafe assumptions. "
+                    "Focus on main subject, scene context, visible style, lighting, camera angle, "
+                    "people count, and safe natural motion ideas."
+                ),
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=SCENE_SCHEMA,
+            ),
+        )
+
+        data = json.loads(response.text)
+
+        if not isinstance(data.get("safe_motion_ideas"), list) or len(data["safe_motion_ideas"]) < 2:
+            data["safe_motion_ideas"] = SCENE_ANALYSIS_FALLBACK["safe_motion_ideas"]
+
+        return {
+            "main_subject": data.get("main_subject") or SCENE_ANALYSIS_FALLBACK["main_subject"],
+            "scene_context": data.get("scene_context") or SCENE_ANALYSIS_FALLBACK["scene_context"],
+            "visible_style": data.get("visible_style") or SCENE_ANALYSIS_FALLBACK["visible_style"],
+            "lighting": data.get("lighting") or SCENE_ANALYSIS_FALLBACK["lighting"],
+            "camera_angle": data.get("camera_angle") or SCENE_ANALYSIS_FALLBACK["camera_angle"],
+            "people_count": int(data.get("people_count", 0) or 0),
+            "safe_motion_ideas": data.get("safe_motion_ideas") or SCENE_ANALYSIS_FALLBACK["safe_motion_ideas"],
+        }
+
+    except Exception as e:
+        print("IMAGE ANALYSIS FAILED, USING FALLBACK:", e)
+        return SCENE_ANALYSIS_FALLBACK
+
+
 def build_cinematic_prompt(
     category: str,
     template: str,
     video_mode: str,
     user_extra_text: str = "",
     mood: str = "auto",
+    scene: dict | None = None,
 ):
     category = normalize_choice(category, ALLOWED_CATEGORIES, "cinematic")
     template = normalize_choice(template, ALLOWED_TEMPLATES, "auto")
@@ -449,63 +517,92 @@ def build_cinematic_prompt(
     if mood == "auto":
         mood = choose_mood(user_extra_text)
 
-    preset = THEME_PRESETS.get(category, THEME_PRESETS["cinematic"])
+    blueprint = THEME_BLUEPRINTS.get(category, THEME_BLUEPRINTS["cinematic"])
     template_layer = TEMPLATE_LAYERS.get(template, TEMPLATE_LAYERS["auto"])
     mood_layer = MOOD_LAYERS.get(mood, MOOD_LAYERS["auto"])
-    video_layer = VIDEO_MODE_PROMPTS.get(video_mode, VIDEO_MODE_PROMPTS["clip_6s"])
+    scene = scene or SCENE_ANALYSIS_FALLBACK
+
+    motion_ideas = scene.get("safe_motion_ideas") or SCENE_ANALYSIS_FALLBACK["safe_motion_ideas"]
+    beat_1 = motion_ideas[0] if len(motion_ideas) > 0 else "subtle natural movement"
+    beat_2 = motion_ideas[1] if len(motion_ideas) > 1 else "gentle camera motion"
+    beat_3 = motion_ideas[2] if len(motion_ideas) > 2 else "the motion settles into a polished ending frame"
+
+    people_count = int(scene.get("people_count", 0) or 0)
+
+    if people_count >= 2:
+        people_line = (
+            "If multiple people are visible, preserve each person's face, position, body proportions "
+            "and relationship spacing. Avoid swapping, merging or morphing identities."
+        )
+    elif people_count == 1:
+        people_line = (
+            "If a person is visible, preserve the face, hairstyle, clothing, body shape and identity impression."
+        )
+    else:
+        people_line = (
+            "Preserve the main object, product, pet, vehicle or scene structure from the uploaded image."
+        )
 
     extra = (user_extra_text or "").strip()
 
-    user_layer = (
-        f"Extra user direction: {extra}"
-        if extra
-        else "No extra user direction. Follow the selected Képlabor preset."
-    )
+    if extra:
+        extra_line = f"Additional creative direction: {extra}"
+    else:
+        extra_line = "Additional creative direction: keep the scene simple, elegant and cinematic."
 
-    return f"""
-KÉPLABOR VEO 3.1 LITE CINEMATIC DIRECTOR PROMPT
+    duration_line = "short 6-second cinematic clip" if video_mode in ["clip_6s", "simple_clip"] else "8-second premium cinematic scene"
 
-Generate an image-to-video cinematic scene from the uploaded image.
+    prompt = f"""
+Animate the uploaded photo into a {duration_line}.
 
-CAMERA:
-{preset["camera"]}
+Use the uploaded image as the visual reference.
+Do not over-redesign the image. Add motion, camera movement and cinematic atmosphere.
 
-SCENE:
-{preset["scene"]}
+Subject:
+{scene["main_subject"]}
 
-LIGHTING:
-{preset["lighting"]}
+Scene:
+In {scene["scene_context"]}. Visible style: {scene["visible_style"]}. Observed lighting: {scene["lighting"]}. Camera angle: {scene["camera_angle"]}.
 
-MOTION:
-{preset["motion"]}
+Continuity:
+{people_line}
 
-STYLE:
-{preset["style"]}
+Shot:
+{blueprint["shot"]}
 
-MOOD:
+Action:
+{beat_1}; then {beat_2}; then {beat_3}.
+
+Camera:
+{blueprint["camera"]}
+
+Environmental motion:
+{blueprint["motion"]}
+
+Lighting:
+{blueprint["lighting"]}
+
+Style:
+{blueprint["style"]}
+
+Mood:
 {mood_layer}
 
-TEMPLATE:
+Visual treatment:
 {template_layer}
 
-VIDEO LENGTH:
-{video_layer}
+Audio:
+{blueprint["audio"]}
 
-AUDIO:
-{preset["audio"]}
+{extra_line}
 
-USER REQUEST:
-{user_layer}
+Avoid:
+{blueprint["negative"]}
 
-{IDENTITY_LOCK_LAYER}
-
-{COUPLE_LAYER}
-
-{QUALITY_LAYER}
-
-Final goal:
-Create a premium, emotionally clear, social-ready cinematic video that feels like a high-end AI commercial, not a generic AI effect.
+No on-screen text, no subtitles, no logos, no watermark.
 """.strip()
+
+    return prompt
 
 
 def style_for_template(template: str):
@@ -648,11 +745,26 @@ def create_fallback_preview_video(
     subprocess.run(compress_cmd, check=True)
 
 
+def extract_veo_error(operation):
+    error = getattr(operation, "error", None)
+
+    if not error:
+        return None, None
+
+    if isinstance(error, dict):
+        return error.get("code"), error.get("message")
+
+    return getattr(error, "code", None), getattr(error, "message", str(error))
+
+
 def generate_with_veo_lite(
     image_path: str | None,
     prompt: str,
     final_video_path: str,
     duration: int,
+    category: str,
+    template: str,
+    mood: str,
 ):
     if duration not in [6, 8]:
         raise ValueError("Veo Lite tesztnél csak 6 vagy 8 mp engedélyezett.")
@@ -671,29 +783,66 @@ def generate_with_veo_lite(
     if image_path:
         image_input = types.Image.from_file(location=image_path)
 
-    operation = client.models.generate_videos(
-        model="veo-3.1-lite-generate-preview",
-        prompt=prompt,
-        image=image_input,
-        config=config,
-    )
+    max_attempts = 2
+    last_error = None
 
-    while not operation.done:
-        time.sleep(10)
-        operation = client.operations.get(operation)
+    for attempt in range(1, max_attempts + 1):
+        print("VEO REQUEST START")
+        print("attempt:", attempt)
+        print("model:", "veo-3.1-lite-generate-preview")
+        print("category:", category)
+        print("template:", template)
+        print("mood:", mood)
+        print("duration:", duration)
+        print("prompt_chars:", len(prompt))
+        print("prompt_preview:", prompt[:1600])
 
-    if not operation.response or not operation.response.generated_videos:
-        print("FULL VEO OPERATION:", operation)
-        print("VEO ERROR:", getattr(operation, "error", None))
-        print("VEO RESPONSE:", getattr(operation, "response", None))
+        try:
+            operation = client.models.generate_videos(
+                model="veo-3.1-lite-generate-preview",
+                prompt=prompt,
+                image=image_input,
+                config=config,
+            )
 
-        raise RuntimeError(
-            f"A Veo nem adott vissza videót. Error: {getattr(operation, 'error', None)}"
-        )
+            while not operation.done:
+                time.sleep(15)
+                operation = client.operations.get(operation)
 
-    generated_video = operation.response.generated_videos[0]
-    client.files.download(file=generated_video.video)
-    generated_video.video.save(final_video_path)
+            if operation.response and operation.response.generated_videos:
+                generated_video = operation.response.generated_videos[0]
+                client.files.download(file=generated_video.video)
+                generated_video.video.save(final_video_path)
+                return
+
+            code, msg = extract_veo_error(operation)
+
+            print("FULL VEO OPERATION:", operation)
+            print("VEO ERROR CODE:", code)
+            print("VEO ERROR MESSAGE:", msg)
+            print("VEO RESPONSE:", getattr(operation, "response", None))
+
+            last_error = {
+                "code": code,
+                "message": msg,
+                "operation": str(operation),
+            }
+
+            if code in [13, 500, 503, 504] and attempt < max_attempts:
+                time.sleep(8 * attempt)
+                continue
+
+            raise RuntimeError(f"A Veo nem adott vissza videót. Error: {last_error}")
+
+        except Exception as e:
+            print("VEO ATTEMPT ERROR:", e)
+            last_error = str(e)
+
+            if attempt < max_attempts:
+                time.sleep(8 * attempt)
+                continue
+
+            raise RuntimeError(f"A Veo generálás sikertelen. Error: {last_error}")
 
 
 def render_video(
@@ -728,12 +877,24 @@ def render_video(
     video_id = str(uuid.uuid4())
     final_video_path = f"{VIDEO_DIR}/{video_id}.mp4"
 
+    if category == "auto":
+        category = choose_category(text)
+
+    if template == "auto":
+        template = choose_template(text)
+
+    if mood == "auto":
+        mood = choose_mood(text)
+
+    scene_analysis = analyze_image_for_video(image_path)
+
     cinematic_prompt = build_cinematic_prompt(
         category=category,
         template=template,
         video_mode=video_mode,
         user_extra_text=text,
         mood=mood,
+        scene=scene_analysis,
     )
 
     try:
@@ -742,6 +903,9 @@ def render_video(
             prompt=cinematic_prompt,
             final_video_path=final_video_path,
             duration=duration,
+            category=category,
+            template=template,
+            mood=mood,
         )
 
         users_db[email] = credits - credit_cost
@@ -754,7 +918,11 @@ def render_video(
             "message": str(e),
             "credits_left": credits,
             "engine": "veo_3_1_lite",
+            "category": category,
+            "template": template,
+            "mood": mood,
             "cinematic_prompt": cinematic_prompt,
+            "scene_analysis": scene_analysis,
         }
 
     return {
@@ -768,6 +936,7 @@ def render_video(
         "download": f"{MODAL_BASE_URL}/download/{video_id}",
         "credits_left": int(users_db.get(email, 0)),
         "cinematic_prompt": cinematic_prompt,
+        "scene_analysis": scene_analysis,
         "status": "ready",
         "engine": "veo_3_1_lite",
     }
@@ -789,12 +958,13 @@ def home():
             "stripe_packages",
             "clip_6s",
             "clip_8s",
-            "cinematic_prompt_engine_v2",
-            "theme_presets",
-            "mood_layers",
+            "promptless_cinematic_engine_v3",
+            "gemini_image_analysis",
+            "motion_centric_prompt_compiler",
             "image_upload",
             "modal_volume_video_storage",
             "veo_3_1_lite_real_generation",
+            "retry_on_internal_error",
         ],
         "packages": CREDIT_PACKAGES,
         "video_modes": VIDEO_MODES,
@@ -974,15 +1144,6 @@ async def text_to_video(
 
     if not email:
         return {"error": "missing_email"}
-
-    if category == "auto":
-        category = choose_category(text)
-
-    if template == "auto":
-        template = choose_template(text)
-
-    if mood == "auto":
-        mood = choose_mood(text)
 
     return render_video(
         text=text,

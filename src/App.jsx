@@ -41,6 +41,7 @@ export default function App() {
   const [videoMode, setVideoMode] = useState("clip_6s");
 
   const [videoUrl, setVideoUrl] = useState("");
+  const [previewError, setPreviewError] = useState("");
   const [creditsLeft, setCreditsLeft] = useState(null);
 
   const [loading, setLoading] = useState(false);
@@ -404,6 +405,7 @@ export default function App() {
 
     if (!image) {
       setMessage("Először tölts fel egy képet.");
+      scrollToGenerator();
       return;
     }
 
@@ -416,8 +418,16 @@ export default function App() {
     setLoading(true);
     setRenderProgress(8);
     setRenderStep(0);
-    setMessage("A Képlabor elindította a cinematic AI renderelést...");
+    setMessage("");
+    setPreviewError("");
     setVideoUrl("");
+
+    setTimeout(() => {
+      document.getElementById("preview-card")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 150);
 
     try {
       const formData = new FormData();
@@ -445,14 +455,14 @@ export default function App() {
 
       if (data.error) {
         if (data.error === "no_credits") {
-          setMessage("Nincs elég kredited a generáláshoz.");
+          setPreviewError("Nincs elég kredited a generáláshoz.");
           scrollToPricing();
         } else if (data.error === "generation_failed") {
-          setMessage(
-            "A Veo most nem tudta elkészíteni a videót. Próbáld újra egyszerűbb képpel vagy másik hangulattal."
+          setPreviewError(
+            "A Veo most nem tudta elkészíteni a videót. Próbáld újra pár perc múlva, vagy válassz egyszerűbb képet / másik hangulatot."
           );
         } else {
-          setMessage("Hiba: " + data.error);
+          setPreviewError("Hiba történt: " + data.error);
         }
 
         setLoading(false);
@@ -465,7 +475,7 @@ export default function App() {
       setMessage("Elkészült a cinematic AI videód.");
     } catch (err) {
       console.log(err);
-      setMessage("Szerver hiba generálás közben.");
+      setPreviewError("Szerver hiba történt generálás közben.");
     }
 
     setLoading(false);
@@ -497,6 +507,7 @@ export default function App() {
       setImage(file);
       setImagePreview(URL.createObjectURL(file));
       setVideoUrl("");
+      setPreviewError("");
       setMessage("Kép kiválasztva. Most válassz élményt és indítsd a generálást.");
     }
   }
@@ -1111,8 +1122,7 @@ export default function App() {
                   className="w-full rounded-2xl border border-white/10 bg-black/40 px-5 py-4 outline-none transition focus:border-cyan-400"
                 />
                 <p className="mt-2 text-xs text-zinc-500">
-                  Nem kötelező. Az alap cinematic promptot a kiválasztott élmény
-                  adja.
+                  Magyarul is írhatsz. A backend angol Veo prompttá alakítja.
                 </p>
               </div>
 
@@ -1162,7 +1172,10 @@ export default function App() {
                 )}
               </div>
 
-              <div className="flex h-[360px] items-center justify-center overflow-hidden rounded-[32px] border border-cyan-400/20 bg-black/40">
+              <div
+                id="preview-card"
+                className="flex h-[360px] items-center justify-center overflow-hidden rounded-[32px] border border-cyan-400/20 bg-black/40"
+              >
                 {loading ? (
                   <RenderLoadingCard />
                 ) : videoUrl ? (
@@ -1172,6 +1185,22 @@ export default function App() {
                     autoPlay
                     className="h-full w-full object-cover"
                   />
+                ) : previewError ? (
+                  <div className="px-8 text-center">
+                    <div className="mb-4 text-5xl">⚠️</div>
+                    <div className="mb-3 text-2xl font-black text-red-200">
+                      Nem sikerült a generálás
+                    </div>
+                    <p className="mx-auto max-w-sm text-sm leading-relaxed text-zinc-300">
+                      {previewError}
+                    </p>
+                    <button
+                      onClick={generateVideo}
+                      className="mt-6 rounded-2xl bg-white px-5 py-3 font-black text-black transition hover:scale-105"
+                    >
+                      Újrapróbálom
+                    </button>
+                  </div>
                 ) : (
                   <div className="px-8 text-center text-zinc-500">
                     A generált videó itt fog megjelenni
@@ -1349,16 +1378,16 @@ export default function App() {
                 "Nem. A szövegmező opcionális. A lényeg az élmény, hangulat és kép kiválasztása.",
               ],
               [
+                "Magyarul is írhatok?",
+                "Igen. A felület magyar, a backend pedig angol Veo promptot épít a háttérben.",
+              ],
+              [
                 "Páros fotóval működik?",
                 "Igen. Love, Memory és Luxury módban különösen jó irány, de a kép minősége számít.",
               ],
               [
                 "Mikor von le kreditet?",
                 "A backend sikeres generálás után von le kreditet. Hibánál nem kellene levonnia.",
-              ],
-              [
-                "Miért béta?",
-                "Mert a Veo generálás minősége képenként eltérhet, ezért még tesztelni és finomítani kell.",
               ],
             ].map(([q, a]) => (
               <div
