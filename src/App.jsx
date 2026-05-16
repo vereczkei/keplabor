@@ -11,7 +11,6 @@ import {
 } from "firebase/auth";
 
 const API_URL = "https://vereczkeijanosgabor--video-test-fastapi-app.modal.run";
-const APP_SECRET = "keplabor2026supersecret";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCmJTZJXdOUbQ6bf87IGsoDL46HDLZMQEU",
@@ -25,6 +24,16 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
+
+async function getAuthToken() {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error("Nincs bejelentkezett felhasználó.");
+  }
+
+  return await currentUser.getIdToken();
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -202,7 +211,7 @@ export default function App() {
       setUser(firebaseUser);
 
       if (firebaseUser?.email) {
-        checkCredits(firebaseUser.email, false);
+        checkCredits(false);
       }
     });
 
@@ -234,7 +243,7 @@ export default function App() {
 
       if (result.user?.email) {
         setUser(result.user);
-        await checkCredits(result.user.email, false);
+        await checkCredits(false);
         setMessage("Sikeres belépés. Most már tudsz videót generálni.");
       }
     } catch (error) {
@@ -250,20 +259,20 @@ export default function App() {
     setMessage("Kiléptél a fiókból.");
   }
 
-  async function checkCredits(targetEmail = user?.email, showMsg = true) {
-    if (!targetEmail) {
-      if (showMsg) setMessage("Nincs bejelentkezett email.");
+  async function checkCredits(showMsg = true) {
+    if (!auth.currentUser) {
+      if (showMsg) setMessage("Nincs bejelentkezett felhasználó.");
       return;
     }
 
     try {
+      const token = await getAuthToken();
+
       const res = await fetch(`${API_URL}/check-credits`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "x-app-secret": APP_SECRET,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email: targetEmail }),
       });
 
       const data = await res.json();
@@ -285,7 +294,7 @@ export default function App() {
   }
 
   async function buyCredits(packageId = "starter") {
-    if (!user?.email) {
+    if (!auth.currentUser) {
       setMessage("Először jelentkezz be Google fiókkal.");
       scrollToGenerator();
       return;
@@ -295,14 +304,15 @@ export default function App() {
     setMessage("Stripe fizetés indítása...");
 
     try {
+      const token = await getAuthToken();
+
       const res = await fetch(`${API_URL}/buy-credits`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-app-secret": APP_SECRET,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          email: user.email,
           package_id: packageId,
         }),
       });
@@ -323,7 +333,7 @@ export default function App() {
   }
 
   async function generateVideo() {
-    if (!user?.email) {
+    if (!auth.currentUser) {
       setMessage("Először jelentkezz be Google fiókkal.");
       scrollToGenerator();
       return;
@@ -357,9 +367,9 @@ export default function App() {
     }, 150);
 
     try {
+      const token = await getAuthToken();
       const formData = new FormData();
 
-      formData.append("email", user.email);
       formData.append("text", text || currentExperience?.prompt || "");
       formData.append("category", category);
       formData.append("template", template);
@@ -373,7 +383,7 @@ export default function App() {
       const res = await fetch(`${API_URL}/generate-from-image`, {
         method: "POST",
         headers: {
-          "x-app-secret": APP_SECRET,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });

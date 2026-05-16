@@ -5,9 +5,13 @@ import json
 import subprocess
 import modal
 import stripe
+import firebase_admin
 
 from google import genai
 from google.genai import types
+
+from firebase_admin import credentials
+from firebase_admin import auth as firebase_auth
 
 from fastapi import (
     FastAPI,
@@ -40,11 +44,20 @@ image = (
         "stripe",
         "pillow",
         "google-genai",
+        "firebase-admin",
     )
 )
 
 app = modal.App("video-test", image=image)
 api = FastAPI()
+
+# =========================
+# FIREBASE ADMIN
+# =========================
+
+if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase-service-account.json")
+    firebase_admin.initialize_app(cred)
 
 users_db = modal.Dict.from_name("video-users-db", create_if_missing=True)
 video_volume = modal.Volume.from_name("keplabor-videos", create_if_missing=True)
@@ -125,8 +138,7 @@ VIDEO_MODES = {
 DISABLED_VIDEO_MODES = {"narrated_ad"}
 
 # =========================
-# PROMPTMENTES KÉPLABOR ENGINE V3
-# Lite marad, audio marad, prompt rövidebb és mozgáscentrikus
+# PROMPT ENGINE
 # =========================
 
 ALLOWED_CATEGORIES = {
@@ -331,15 +343,30 @@ def require_app_secret(x_app_secret: str = Header(None)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
-def require_test_email(email: str):
-    if not email:
-        raise HTTPException(status_code=400, detail="missing_email")
+def get_current_user_email(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="missing_authorization")
 
-    if email.strip().lower() != MY_TEST_EMAIL.strip().lower():
-        raise HTTPException(
-            status_code=403,
-            detail="A Veo teszt jelenleg csak belső használatra engedélyezett.",
-        )
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="invalid_authorization_format")
+
+    token = authorization.replace("Bearer ", "").strip()
+
+    try:
+        decoded_token = firebase_auth.verify_id_token(token)
+        email = decoded_token.get("email")
+
+        if not email:
+            raise HTTPException(status_code=401, detail="missing_email_in_token")
+
+        return email.strip().lower()
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        print("FIREBASE TOKEN VERIFY ERROR:", e)
+        raise HTTPException(status_code=401, detail="unauthorized")
 
 
 def clean_text(text: str):
@@ -605,146 +632,6 @@ No on-screen text, no subtitles, no logos, no watermark.
     return prompt
 
 
-def style_for_template(template: str):
-    if template == "luxury":
-        return {
-            "font_color": "white",
-            "font_size": "62",
-            "box_color": "black@0.42",
-            "bg": "black",
-        }
-
-    if template == "tiktok-fast":
-        return {
-            "font_color": "white",
-            "font_size": "68",
-            "box_color": "0xff0050@0.55",
-            "bg": "black",
-        }
-
-    if template == "minimal":
-        return {
-            "font_color": "black",
-            "font_size": "52",
-            "box_color": "white@0.72",
-            "bg": "white",
-        }
-
-    return {
-        "font_color": "white",
-        "font_size": "58",
-        "box_color": "black@0.52",
-        "bg": "black",
-    }
-
-
-def create_caption_text(category: str, video_mode: str):
-    if category == "luxury":
-        return "Luxury cinematic"
-    if category == "love":
-        return "Romantic moment"
-    if category == "memory":
-        return "Moving memory"
-    if category == "fantasy":
-        return "Fantasy scene"
-    if category == "celebrity":
-        return "Celebrity moment"
-    if category == "product":
-        return "Premium product"
-    if category == "funny":
-        return "Viral moment"
-    return "Cinematic scene"
-
-
-def create_fallback_preview_video(
-    image_path: str | None,
-    final_video_path: str,
-    caption_text: str,
-    template: str,
-    duration: int,
-):
-    safe_caption = clean_text(caption_text)
-    style = style_for_template(template)
-
-    raw_video_path = final_video_path.replace(".mp4", "_raw.mp4")
-
-    if image_path:
-        vf = (
-            "scale=1200:-1,"
-            "zoompan=z='min(zoom+0.0012,1.16)':"
-            "x='iw/2-(iw/zoom/2)':"
-            "y='ih/2-(ih/zoom/2)':"
-            f"d={duration * 30}:"
-            "s=1080x1920:fps=30,"
-            f"drawtext=text='{safe_caption}':"
-            f"fontcolor={style['font_color']}:"
-            f"fontsize={style['font_size']}:"
-            "x=(w-text_w)/2:"
-            "y=h*0.80:"
-            "box=1:"
-            f"boxcolor={style['box_color']}:"
-            "boxborderw=24"
-        )
-
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-loop", "1",
-            "-i", image_path,
-            "-vf", vf,
-            "-t", str(duration),
-            "-pix_fmt", "yuv420p",
-            "-movflags", "+faststart",
-            raw_video_path,
-        ]
-    else:
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-f", "lavfi",
-            "-i",
-            f"color=c={style['bg']}:s=1080x1920:d={duration}",
-            "-vf",
-            (
-                f"drawtext=text='{safe_caption}':"
-                f"fontcolor={style['font_color']}:"
-                f"fontsize={style['font_size']}:"
-                "x=(w-text_w)/2:"
-                "y=(h-text_h)/2:"
-                "box=1:"
-                f"boxcolor={style['box_color']}:"
-                "boxborderw=24"
-            ),
-            "-pix_fmt",
-            "yuv420p",
-            "-movflags",
-            "+faststart",
-            raw_video_path,
-        ]
-
-    subprocess.run(cmd, check=True)
-
-    compress_cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        raw_video_path,
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "24",
-        "-pix_fmt",
-        "yuv420p",
-        "-movflags",
-        "+faststart",
-        final_video_path,
-    ]
-
-    subprocess.run(compress_cmd, check=True)
-
-
 def extract_veo_error(operation):
     error = getattr(operation, "error", None)
 
@@ -780,6 +667,7 @@ def generate_with_veo_lite(
     )
 
     image_input = None
+
     if image_path:
         image_input = types.Image.from_file(location=image_path)
 
@@ -854,8 +742,6 @@ def render_video(
     image_path: str | None = None,
     mood: str = "auto",
 ):
-    # require_test_email(email)
-
     settings = get_video_settings(video_mode)
 
     if settings.get("error"):
@@ -941,7 +827,6 @@ def render_video(
         "engine": "veo_3_1_lite",
     }
 
-
 # =========================
 # ROUTES
 # =========================
@@ -952,7 +837,7 @@ def home():
         "status": "ok",
         "message": "Képlabor backend fut",
         "engine": "veo_3_1_lite",
-        "test_email_only": MY_TEST_EMAIL,
+        "auth": "firebase_id_token",
         "features": [
             "credits",
             "stripe_packages",
@@ -964,7 +849,7 @@ def home():
             "image_upload",
             "modal_volume_video_storage",
             "veo_3_1_lite_real_generation",
-            "retry_on_internal_error",
+            "firebase_auth_backend_verification",
         ],
         "packages": CREDIT_PACKAGES,
         "video_modes": VIDEO_MODES,
@@ -977,16 +862,12 @@ def home():
 @api.post("/buy-credits")
 async def buy_credits(
     request: Request,
-    x_app_secret: str = Header(None),
+    authorization: str = Header(None),
 ):
-    require_app_secret(x_app_secret)
+    email = get_current_user_email(authorization)
 
     data = await request.json()
-    email = data.get("email")
     package_id = data.get("package_id", "starter")
-
-    if not email:
-        return {"error": "missing_email"}
 
     package = CREDIT_PACKAGES.get(package_id)
 
@@ -1073,6 +954,7 @@ async def stripe_webhook(request: Request):
                 email = customer_details["email"]
 
         if email and credits_to_add > 0:
+            email = email.strip().lower()
             current_credits = int(users_db.get(email, 0))
             users_db[email] = current_credits + credits_to_add
 
@@ -1088,16 +970,9 @@ async def stripe_webhook(request: Request):
 
 @api.post("/check-credits")
 async def check_credits(
-    request: Request,
-    x_app_secret: str = Header(None),
+    authorization: str = Header(None),
 ):
-    require_app_secret(x_app_secret)
-
-    data = await request.json()
-    email = data.get("email")
-
-    if not email:
-        return {"error": "missing_email"}
+    email = get_current_user_email(authorization)
 
     return {
         "email": email,
@@ -1119,8 +994,7 @@ async def admin_add_credits(
     if not email:
         return {"error": "missing_email"}
 
-    if email.strip().lower() != MY_TEST_EMAIL.strip().lower():
-        return {"error": "only_test_email_allowed"}
+    email = email.strip().lower()
 
     if amount <= 0 or amount > 100:
         return {"error": "invalid_amount"}
@@ -1139,21 +1013,17 @@ async def admin_add_credits(
 @api.post("/text-to-video")
 async def text_to_video(
     request: Request,
-    x_app_secret: str = Header(None),
+    authorization: str = Header(None),
 ):
-    require_app_secret(x_app_secret)
+    email = get_current_user_email(authorization)
 
     payload = await request.json()
 
-    email = payload.get("email")
     text = payload.get("text", "")
     category = payload.get("category", "cinematic")
     template = payload.get("template", "auto")
     mood = payload.get("mood", "auto")
     video_mode = payload.get("video_mode", "clip_6s")
-
-    if not email:
-        return {"error": "missing_email"}
 
     return render_video(
         text=text,
@@ -1167,8 +1037,7 @@ async def text_to_video(
 
 @api.post("/generate-from-image")
 async def generate_from_image(
-    x_app_secret: str = Header(None),
-    email: str = Form(...),
+    authorization: str = Header(None),
     text: str = Form(""),
     category: str = Form("cinematic"),
     template: str = Form("auto"),
@@ -1176,13 +1045,10 @@ async def generate_from_image(
     video_mode: str = Form("clip_6s"),
     image_file: UploadFile = File(None),
 ):
-    require_app_secret(x_app_secret)
+    email = get_current_user_email(authorization)
 
     image_path = None
     filename = ""
-
-    if not email:
-        return {"error": "missing_email"}
 
     if image_file:
         filename = image_file.filename or "upload.jpg"
