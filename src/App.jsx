@@ -774,11 +774,20 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setShowPricing((v) => !v)}
-                  className="w-full rounded-3xl border border-white/10 bg-white/10 px-7 py-4 font-black backdrop-blur transition active:scale-[0.98] md:ml-3 md:w-auto"
-                >
-                  Árak / kreditek
-                </button>
+  onClick={() => {
+    setShowPricing(true);
+
+    setTimeout(() => {
+      document.getElementById("pricing")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 120);
+  }}
+  className="w-full rounded-3xl border border-white/10 bg-white/10 px-7 py-4 font-black backdrop-blur transition active:scale-[0.98] md:ml-3 md:w-auto"
+>
+  Árak / kreditek
+</button>
 
                 <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
                   🚧 Korai béta, de valódi AI videót készít.
