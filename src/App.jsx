@@ -560,7 +560,42 @@ export default function App() {
       }
 
       setRenderProgress(100);
-      setVideoUrl(data.download);
+
+if (data.download) {
+  const finalUrl = `${data.download}?t=${Date.now()}`;
+  setVideoUrl(finalUrl);
+  setPreviewError("");
+  setMessage("Elkészült a cinematic AI videód.");
+} else {
+  setPreviewError(
+    "A videó elkészült, de az előnézeti link nem érkezett meg. Frissítsd a mentett videókat."
+  );
+}
+
+if (typeof data.credits_left !== "undefined") {
+  setCreditsLeft(Number(data.credits_left));
+} else {
+  await checkCredits(false, auth.currentUser);
+}
+
+if (data.capacity_status === "closed") {
+  setSalesEnabled(false);
+  setCapacityMessage(
+    "A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők."
+  );
+}
+
+await fetchMyVideos(auth.currentUser);
+setLoading(false);
+
+setTimeout(() => {
+  document.getElementById("result")?.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
+}, 150);
+
+return;
 
       if (typeof data.credits_left !== "undefined") {
         setCreditsLeft(Number(data.credits_left));
@@ -1094,12 +1129,15 @@ export default function App() {
                   {loading ? (
                     <RenderLoadingCard />
                   ) : videoUrl ? (
-                    <video
-                      src={videoUrl}
-                      controls
-                      autoPlay
-                      className="h-full w-full object-cover"
-                    />
+  <video
+    key={videoUrl}
+    src={videoUrl}
+    controls
+    autoPlay
+    playsInline
+    preload="metadata"
+    className="h-full w-full object-cover"
+  />
                   ) : previewError ? (
                     <div className="px-6 text-center">
                       <div className="mb-3 text-5xl">⚠️</div>
