@@ -473,6 +473,33 @@ export default function App() {
     setBuying(false);
   }
 
+  async function waitForVideoReady(url, maxTries = 15, delay = 1500) {
+    let tries = 0;
+
+    while (tries < maxTries) {
+      try {
+        const cleanUrl = url.split("?")[0];
+        const testUrl = `${cleanUrl}?t=${Date.now()}`;
+
+        const response = await fetch(testUrl, {
+          method: "HEAD",
+          cache: "no-store",
+        });
+
+        if (response.ok) {
+          return testUrl;
+        }
+      } catch (err) {
+        console.log("Videó előnézet még nem elérhető, újrapróbálás...", err);
+      }
+
+      tries += 1;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    throw new Error("video_not_ready");
+  }
+
   async function generateVideo() {
     if (!auth.currentUser) {
       setMessage("Először jelentkezz be Google fiókkal.");
@@ -559,43 +586,32 @@ export default function App() {
         return;
       }
 
-      setRenderProgress(100);
+      setRenderProgress(92);
+      setRenderStep(5);
+      setMessage("A videó elkészült, előnézet betöltése...");
 
-if (data.download) {
-  const finalUrl = `${data.download}?t=${Date.now()}`;
-  setVideoUrl(finalUrl);
-  setPreviewError("");
-  setMessage("Elkészült a cinematic AI videód.");
-} else {
-  setPreviewError(
-    "A videó elkészült, de az előnézeti link nem érkezett meg. Frissítsd a mentett videókat."
-  );
-}
+      if (data.download) {
+        const finalUrl = `${data.download}?t=${Date.now()}`;
 
-if (typeof data.credits_left !== "undefined") {
-  setCreditsLeft(Number(data.credits_left));
-} else {
-  await checkCredits(false, auth.currentUser);
-}
+        try {
+          const readyUrl = await waitForVideoReady(finalUrl);
 
-if (data.capacity_status === "closed") {
-  setSalesEnabled(false);
-  setCapacityMessage(
-    "A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők."
-  );
-}
+          setVideoUrl(readyUrl);
+          setPreviewError("");
+          setRenderProgress(100);
+          setMessage("Elkészült a cinematic AI videód.");
+        } catch (err) {
+          console.log("Videó előnézet betöltési hiba:", err);
 
-await fetchMyVideos(auth.currentUser);
-setLoading(false);
-
-setTimeout(() => {
-  document.getElementById("result")?.scrollIntoView({
-    behavior: "smooth",
-    block: "center",
-  });
-}, 150);
-
-return;
+          setPreviewError(
+            "A videó elkészült, de az előnézet lassan tölt be. Frissítsd a mentett videókat, vagy próbáld megnyitni a galériából."
+          );
+        }
+      } else {
+        setPreviewError(
+          "A videó elkészült, de az előnézeti link nem érkezett meg. Frissítsd a mentett videókat."
+        );
+      }
 
       if (typeof data.credits_left !== "undefined") {
         setCreditsLeft(Number(data.credits_left));
@@ -609,7 +625,6 @@ return;
       }
 
       await fetchMyVideos(auth.currentUser);
-      setMessage("Elkészült a cinematic AI videód.");
     } catch (err) {
       console.log(err);
       setPreviewError("Szerver hiba történt generálás közben.");
@@ -809,20 +824,20 @@ return;
                 </button>
 
                 <button
-  onClick={() => {
-    setShowPricing(true);
+                  onClick={() => {
+                    setShowPricing(true);
 
-    setTimeout(() => {
-      document.getElementById("pricing")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 120);
-  }}
-  className="w-full rounded-3xl border border-white/10 bg-white/10 px-7 py-4 font-black backdrop-blur transition active:scale-[0.98] md:ml-3 md:w-auto"
->
-  Árak / kreditek
-</button>
+                    setTimeout(() => {
+                      document.getElementById("pricing")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }, 120);
+                  }}
+                  className="w-full rounded-3xl border border-white/10 bg-white/10 px-7 py-4 font-black backdrop-blur transition active:scale-[0.98] md:ml-3 md:w-auto"
+                >
+                  Árak / kreditek
+                </button>
 
                 <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
                   🚧 Korai béta, de valódi AI videót készít.
@@ -905,21 +920,21 @@ return;
           </div>
 
           {!user && (
-  <div>
-    <button
-      onClick={handleLogin}
-      className="mb-5 flex w-full items-center justify-center gap-3 rounded-3xl bg-white px-5 py-4 text-lg font-black text-black shadow-lg shadow-violet-900/20"
-    >
-      <span className="text-2xl">G</span>
-      Folytatás Google-fiókkal
-    </button>
+            <div>
+              <button
+                onClick={handleLogin}
+                className="mb-5 flex w-full items-center justify-center gap-3 rounded-3xl bg-white px-5 py-4 text-lg font-black text-black shadow-lg shadow-violet-900/20"
+              >
+                <span className="text-2xl">G</span>
+                Folytatás Google-fiókkal
+              </button>
 
-    <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
-      Működik iPhone-on és Androidon is. Ha appon belüli böngészőből nem indul,
-      nyisd meg Safariban vagy Chrome-ban.
-    </p>
-  </div>
-)}
+              <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
+                Működik iPhone-on és Androidon is. Ha appon belüli böngészőből nem indul,
+                nyisd meg Safariban vagy Chrome-ban.
+              </p>
+            </div>
+          )}
 
           <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-5">
@@ -1129,15 +1144,15 @@ return;
                   {loading ? (
                     <RenderLoadingCard />
                   ) : videoUrl ? (
-  <video
-    key={videoUrl}
-    src={videoUrl}
-    controls
-    autoPlay
-    playsInline
-    preload="metadata"
-    className="h-full w-full object-cover"
-  />
+                    <video
+                      key={videoUrl}
+                      src={videoUrl}
+                      controls
+                      autoPlay
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover"
+                    />
                   ) : previewError ? (
                     <div className="px-6 text-center">
                       <div className="mb-3 text-5xl">⚠️</div>
@@ -1185,13 +1200,7 @@ return;
           className="mb-6 rounded-[34px] border border-white/10 bg-white/[0.035] p-4 shadow-2xl backdrop-blur md:p-8"
         >
           <button
-  onClick={() => {
-    setShowPricing(true);
-
-    setTimeout(() => {
-      scrollToPricing();
-    }, 80);
-  }}
+            onClick={() => setShowPricing((v) => !v)}
             className="flex w-full items-center justify-between gap-4 text-left"
           >
             <div>
