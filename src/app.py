@@ -26,15 +26,7 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-# =========================
-# SAJÁT TESZT EMAIL
-# =========================
-
 MY_TEST_EMAIL = "vereczkeijanosgabor@gmail.com"
-
-# =========================
-# MODAL IMAGE
-# =========================
 
 image = (
     modal.Image.debian_slim()
@@ -51,20 +43,12 @@ image = (
 app = modal.App("video-test", image=image)
 api = FastAPI()
 
-# =========================
-# FIREBASE ADMIN
-# =========================
-
 users_db = modal.Dict.from_name("video-users-db", create_if_missing=True)
 video_volume = modal.Volume.from_name("keplabor-videos", create_if_missing=True)
 
 MODAL_BASE_URL = "https://vereczkeijanosgabor--video-test-fastapi-app.modal.run"
 FRONTEND_URL = "https://keplabor.hu"
 VIDEO_DIR = "/outputs"
-
-# =========================
-# CORS
-# =========================
 
 api.add_middleware(
     CORSMiddleware,
@@ -78,10 +62,6 @@ api.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# =========================
-# STRIPE PACKAGES
-# =========================
 
 CREDIT_PACKAGES = {
     "starter": {
@@ -103,10 +83,6 @@ CREDIT_PACKAGES = {
         "description": "35 kredit creatoroknak és vállalkozásoknak",
     },
 }
-
-# =========================
-# VIDEO MODES
-# =========================
 
 VIDEO_MODES = {
     "clip_6s": {
@@ -132,10 +108,6 @@ VIDEO_MODES = {
 }
 
 DISABLED_VIDEO_MODES = {"narrated_ad"}
-
-# =========================
-# PROMPT ENGINE
-# =========================
 
 ALLOWED_CATEGORIES = {
     "auto",
@@ -172,30 +144,25 @@ ALLOWED_MOODS = {
 
 THEME_BLUEPRINTS = {
     "luxury": {
-        "goal": "premium luxury commercial image-to-video scene with controlled wow factor",
+        "goal": "premium luxury commercial image-to-video scene with polished cinematic wow",
         "shot": "medium cinematic portrait or product-style hero shot with premium framing",
-        "camera": "slow smooth dolly-in, subtle parallax, elegant commercial reveal, controlled cinematic push",
+        "camera": "slow smooth dolly-in, subtle parallax, elegant commercial reveal",
         "motion": (
-            "elegant slow motion movement, subtle wind, cinematic fabric movement, "
-            "reactive glossy reflections, premium light streaks, soft atmospheric fog, "
-            "luxury reveal transition around the subject"
+            "subtle wind, elegant fabric movement, natural subject motion, moving glossy reflections, "
+            "premium light sweep, soft atmospheric depth and clean luxury reveal"
         ),
         "environment": (
-            "high-end cinematic luxury environment with moving reflections, soft atmospheric depth, "
-            "premium commercial lighting changes and subtle background evolution while preserving the original subject"
+            "high-end cinematic luxury atmosphere with moving reflections, soft premium depth, "
+            "gentle commercial background motion while preserving the original subject and composition"
         ),
-        "lighting": (
-            "golden rim light, soft cinematic highlights, glossy luxury reflections, "
-            "gentle moving light sweep across the scene"
-        ),
+        "lighting": "golden rim light, soft cinematic highlights, glossy reflections, gentle moving light sweep",
         "style": "luxury fashion advertisement, expensive brand film, polished realism, premium social-ready cinematic look",
-        "audio": "soft premium ambient music with elegant cinematic rise, subtle whoosh and luxury atmosphere",
+        "audio": "soft premium ambient music with elegant cinematic rise and subtle luxury atmosphere",
         "negative": (
             "text, subtitles, logos, watermark, distorted face, broken hands, flicker, chaotic motion, "
             "identity change, outfit replacement, excessive transformation"
         ),
     },
-
     "love": {
         "goal": "romantic cinematic image-to-video scene with emotional atmosphere",
         "shot": "soft medium close-up or gentle couple framing with warm emotional composition",
@@ -216,7 +183,6 @@ THEME_BLUEPRINTS = {
             "sexualized movement, aggressive transformation"
         ),
     },
-
     "memory": {
         "goal": "emotional memory film from a real photo with respectful subtle motion",
         "shot": "nostalgic medium shot with respectful composition",
@@ -225,9 +191,7 @@ THEME_BLUEPRINTS = {
             "very subtle lifelike movement, soft background motion, gentle breathing or expression, "
             "small nostalgic light movement"
         ),
-        "environment": (
-            "warm memory atmosphere, realistic and respectful, slight environmental depth and soft emotional glow"
-        ),
+        "environment": "warm memory atmosphere, realistic and respectful, slight environmental depth and soft emotional glow",
         "lighting": "soft warm natural light, nostalgic glow, delicate contrast, gentle highlight movement",
         "style": "documentary memory film, emotional realism, respectful family-photo atmosphere",
         "audio": "soft emotional piano with warm ambient room tone",
@@ -236,49 +200,37 @@ THEME_BLUEPRINTS = {
             "changing age, changing identity"
         ),
     },
-
     "fantasy": {
-        "goal": "magical fantasy cinematic scene with strong but controlled wow effect",
-        "shot": "cinematic subject shot with magical background depth and heroic reveal",
-        "camera": (
-            "floating cinematic camera movement, slow reveal, slight orbit motion, dramatic depth shift "
-            "while keeping the subject recognizable"
-        ),
+        "goal": "magical fantasy cinematic scene with stable elegant wow effect",
+        "shot": "cinematic subject shot with magical background depth and clean reveal",
+        "camera": "slow floating cinematic camera movement with gentle parallax",
         "motion": (
-            "cinematic magical energy waves, floating glowing particles, reactive lighting pulses, "
-            "atmospheric transformation around the subject, magical elements emerging from the background, "
-            "dynamic environment motion that builds toward a polished reveal"
+            "floating glowing particles, soft magical atmosphere, gentle background motion, "
+            "subtle light pulses, elegant cinematic reveal, soft environmental depth"
         ),
         "environment": (
-            "dreamlike fantasy world partially transforming around the subject, with glowing atmosphere, "
-            "moving particles, volumetric light and subtle background evolution while preserving the original identity and composition"
+            "dreamlike fantasy atmosphere added to the original scene, with soft glow, light particles "
+            "and gentle volumetric depth while preserving the original image structure, subject identity and composition"
         ),
-        "lighting": (
-            "soft magical glow, volumetric light beams, dramatic color shift, gentle highlight pulses "
-            "around the subject"
-        ),
-        "style": "epic fantasy film look, magical but realistic, cinematic transformation, premium visual effects",
-        "audio": "soft fantasy ambience with magical shimmer, cinematic rise and subtle energy sound design",
+        "lighting": "soft magical glow, gentle volumetric light, subtle highlight movement, clean cinematic color shift",
+        "style": "magical realistic fantasy film look, elegant cinematic atmosphere, clean premium visual effects",
+        "audio": "soft fantasy ambience with light magical shimmer and subtle cinematic rise",
         "negative": (
             "overloaded effects, changed identity, distorted anatomy, text, logos, watermark, face morphing, "
-            "body transformation, horror elements, chaotic particle storm"
+            "body transformation, horror elements, chaotic particles, aggressive transformation, full environment replacement"
         ),
     },
-
     "celebrity": {
         "goal": "glamour celebrity cinematic scene with premium social wow effect",
         "shot": "red carpet style medium shot with glossy editorial framing",
-        "camera": (
-            "controlled tracking shot with subtle paparazzi energy, slow push-in, premium glamour reveal "
-            "and dynamic foreground light flashes"
-        ),
+        "camera": "controlled tracking shot with subtle paparazzi energy, slow push-in and premium glamour reveal",
         "motion": (
-            "paparazzi camera flashes, luxury background activity, cinematic crowd silhouettes, "
-            "subtle hair and clothing movement, moving city lights, reflective glamour reveal"
+            "paparazzi camera flashes, subtle luxury background activity, moving city lights, "
+            "cinematic crowd silhouettes in the distance, subtle hair and clothing movement, reflective glamour reveal"
         ),
         "environment": (
-            "luxury celebrity arrival atmosphere with cinematic city lights, moving reflections, "
-            "subtle crowd movement and dynamic background activity while keeping the subject unchanged"
+            "luxury celebrity arrival atmosphere with cinematic city lights, moving reflections and subtle background activity "
+            "while keeping the subject unchanged"
         ),
         "lighting": "flash photography, glossy night lights, luxury reflections, moving light bursts, premium rim light",
         "style": "glamour magazine commercial, red carpet film, premium realistic look, luxury social content",
@@ -288,7 +240,6 @@ THEME_BLUEPRINTS = {
             "crowd covering the subject, excessive face changes"
         ),
     },
-
     "product": {
         "goal": "premium product reveal for ecommerce or ad creative with strong commercial motion",
         "shot": "macro close-up opening shot or clean hero product shot",
@@ -309,7 +260,6 @@ THEME_BLUEPRINTS = {
             "incorrect labels"
         ),
     },
-
     "funny": {
         "goal": "playful social-ready cinematic moment with clean viral energy",
         "shot": "clear readable social media framing",
@@ -324,14 +274,10 @@ THEME_BLUEPRINTS = {
         "audio": "light playful sound design with short viral-style music energy",
         "negative": "chaotic motion, distorted face, broken anatomy, text, logos, watermark, ugly deformation",
     },
-
     "cinematic": {
         "goal": "premium cinematic image-to-video scene with controlled dramatic wow effect",
         "shot": "tight medium cinematic shot with movie-like framing",
-        "camera": (
-            "slow cinematic push-in, natural handheld realism, subtle orbit or parallax movement, "
-            "dramatic reveal toward the end"
-        ),
+        "camera": "slow cinematic push-in, natural handheld realism, subtle parallax movement and dramatic reveal toward the end",
         "motion": (
             "natural subject movement, subtle background depth, atmospheric motion, moving light rays, "
             "soft environmental reaction and elegant cinematic reveal"
@@ -410,9 +356,6 @@ SCENE_SCHEMA = {
     ],
 }
 
-# =========================
-# HELPERS
-# =========================
 
 def get_stripe():
     stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
@@ -485,25 +428,18 @@ def choose_category(text: str, filename: str = ""):
 
     if any(w in t for w in ["luxus", "premium", "prémium", "autó", "ingatlan", "óra", "ékszer", "fashion"]):
         return "luxury"
-
     if any(w in t for w in ["celeb", "sztár", "celebrity", "red carpet", "paparazzi", "híresség"]):
         return "celebrity"
-
     if any(w in t for w in ["termék", "product", "reklám", "brand", "márka", "üzlet"]):
         return "product"
-
     if any(w in t for w in ["szerelem", "romantikus", "esküvő", "love", "pár"]):
         return "love"
-
     if any(w in t for w in ["emlék", "család", "régi kép", "megható", "memory"]):
         return "memory"
-
     if any(w in t for w in ["fantasy", "varázs", "mágia", "álom", "mese"]):
         return "fantasy"
-
     if any(w in t for w in ["vicces", "funny", "poén", "tiktok", "virális"]):
         return "funny"
-
     if any(w in f for w in ["car", "auto", "luxury", "watch", "jewelry"]):
         return "luxury"
 
@@ -516,19 +452,14 @@ def choose_template(text: str, filename: str = ""):
 
     if any(w in t for w in ["luxus", "premium", "prémium", "autó", "ingatlan", "óra", "ékszer"]):
         return "luxury"
-
     if any(w in t for w in ["tiktok", "virális", "gyors", "reels", "social"]):
         return "tiktok-fast"
-
     if any(w in t for w in ["dark", "cinematic", "film", "titok", "misztikus", "sötét", "drámai"]):
         return "dark-cinematic"
-
     if any(w in t for w in ["álom", "dream", "dreamy", "puha", "lebegő"]):
         return "dreamy"
-
     if any(w in t for w in ["minimal", "egyszerű", "clean", "letisztult"]):
         return "minimal"
-
     if any(w in f for w in ["car", "auto", "luxury"]):
         return "luxury"
 
@@ -540,22 +471,16 @@ def choose_mood(text: str):
 
     if any(w in t for w in ["megható", "emlék", "család", "sírás", "érzelmes"]):
         return "emotional"
-
     if any(w in t for w in ["epic", "grandiózus", "nagy", "hősies"]):
         return "epic"
-
     if any(w in t for w in ["álom", "dream", "dreamy", "varázs", "mágia"]):
         return "dreamy"
-
     if any(w in t for w in ["dráma", "drámai", "sötét", "komoly"]):
         return "dramatic"
-
     if any(w in t for w in ["romantikus", "szerelem", "esküvő", "love"]):
         return "romantic"
-
     if any(w in t for w in ["luxus", "premium", "prémium", "elegáns"]):
         return "premium"
-
     if any(w in t for w in ["tiktok", "viral", "virális", "reels"]):
         return "viral"
 
@@ -622,10 +547,8 @@ def build_cinematic_prompt(
 
     if category == "auto":
         category = choose_category(user_extra_text)
-
     if template == "auto":
         template = choose_template(user_extra_text)
-
     if mood == "auto":
         mood = choose_mood(user_extra_text)
 
@@ -668,7 +591,8 @@ def build_cinematic_prompt(
 Animate the uploaded photo into a {duration_line}.
 
 Use the uploaded image as the visual reference.
-Do not over-redesign the image. Add motion, camera movement and cinematic atmosphere.
+Preserve the main subject, face, body proportions, clothing and composition.
+Do not over-redesign the image. Add cinematic motion, camera movement and premium atmosphere.
 
 Subject:
 {scene["main_subject"]}
@@ -690,6 +614,9 @@ Camera:
 
 Environmental motion:
 {blueprint["motion"]}
+
+Environment:
+{blueprint["environment"]}
 
 Lighting:
 {blueprint["lighting"]}
@@ -850,10 +777,8 @@ def render_video(
 
     if category == "auto":
         category = choose_category(text)
-
     if template == "auto":
         template = choose_template(text)
-
     if mood == "auto":
         mood = choose_mood(text)
 
@@ -912,9 +837,6 @@ def render_video(
         "engine": "veo_3_1_lite",
     }
 
-# =========================
-# ROUTES
-# =========================
 
 @api.get("/")
 def home():
@@ -923,19 +845,6 @@ def home():
         "message": "Képlabor backend fut",
         "engine": "veo_3_1_lite",
         "auth": "firebase_id_token",
-        "features": [
-            "credits",
-            "stripe_packages",
-            "clip_6s",
-            "clip_8s",
-            "promptless_cinematic_engine_v3",
-            "gemini_image_analysis",
-            "motion_centric_prompt_compiler",
-            "image_upload",
-            "modal_volume_video_storage",
-            "veo_3_1_lite_real_generation",
-            "firebase_auth_backend_verification",
-        ],
         "packages": CREDIT_PACKAGES,
         "video_modes": VIDEO_MODES,
         "categories": list(ALLOWED_CATEGORIES),
@@ -1042,10 +951,7 @@ async def stripe_webhook(request: Request):
             email = email.strip().lower()
             current_credits = int(users_db.get(email, 0))
             users_db[email] = current_credits + credits_to_add
-
-            print(
-                f"CREDITS ADDED: {email} +{credits_to_add}, total={users_db[email]}"
-            )
+            print(f"CREDITS ADDED: {email} +{credits_to_add}, total={users_db[email]}")
         else:
             print("WEBHOOK PAYMENT RECEIVED BUT MISSING EMAIL OR CREDITS")
             print("SESSION:", session)
@@ -1147,10 +1053,8 @@ async def generate_from_image(
 
     if category == "auto":
         category = choose_category(text, filename)
-
     if template == "auto":
         template = choose_template(text, filename)
-
     if mood == "auto":
         mood = choose_mood(text)
 
