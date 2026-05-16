@@ -854,7 +854,7 @@ def render_video(
     image_path: str | None = None,
     mood: str = "auto",
 ):
-    require_test_email(email)
+    # require_test_email(email)
 
     settings = get_video_settings(video_mode)
 
@@ -1057,13 +1057,20 @@ async def stripe_webhook(request: Request):
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
 
-        metadata = session.get("metadata", {}) or {}
+        metadata = session["metadata"] if "metadata" in session else {}
 
-        email = metadata.get("email")
-        credits_to_add = int(metadata.get("credits", 0))
+        email = metadata["email"] if "email" in metadata else None
+        credits_to_add = int(metadata["credits"]) if "credits" in metadata else 0
 
-        if not email and session.get("customer_details"):
-            email = session["customer_details"].get("email")
+        if not email:
+            customer_details = (
+                session["customer_details"]
+                if "customer_details" in session
+                else None
+            )
+
+            if customer_details and "email" in customer_details:
+                email = customer_details["email"]
 
         if email and credits_to_add > 0:
             current_credits = int(users_db.get(email, 0))
@@ -1072,6 +1079,9 @@ async def stripe_webhook(request: Request):
             print(
                 f"CREDITS ADDED: {email} +{credits_to_add}, total={users_db[email]}"
             )
+        else:
+            print("WEBHOOK PAYMENT RECEIVED BUT MISSING EMAIL OR CREDITS")
+            print("SESSION:", session)
 
     return {"ok": True}
 
