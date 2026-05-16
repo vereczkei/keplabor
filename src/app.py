@@ -1310,6 +1310,7 @@ def download(video_id: str):
         modal.Secret.from_name("app-auth"),
         modal.Secret.from_name("gemini-secret"),
         modal.Secret.from_name("firebase-admin"),
+        modal.Secret.from_name("smtp-secret"),
     ],
     volumes={
         VIDEO_DIR: video_volume,

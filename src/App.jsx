@@ -861,17 +861,21 @@ export default function App() {
           </div>
 
           {!user && (
-            <button
-              onClick={handleLogin}
-              className="mb-5 flex w-full items-center justify-center gap-3 rounded-3xl bg-white px-5 py-4 text-lg font-black text-black shadow-lg shadow-violet-900/20"
-            >
-              <span className="text-2xl">G</span>
-              Folytatás Google-fiókkal
-            </button>
-            <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
-              Működik iPhone-on és Androidon is. Ha appon belüli böngészőből nem indul, nyisd meg Safariban vagy Chrome-ban.
-            </p>
-          )}
+  <div>
+    <button
+      onClick={handleLogin}
+      className="mb-5 flex w-full items-center justify-center gap-3 rounded-3xl bg-white px-5 py-4 text-lg font-black text-black shadow-lg shadow-violet-900/20"
+    >
+      <span className="text-2xl">G</span>
+      Folytatás Google-fiókkal
+    </button>
+
+    <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
+      Működik iPhone-on és Androidon is. Ha appon belüli böngészőből nem indul,
+      nyisd meg Safariban vagy Chrome-ban.
+    </p>
+  </div>
+)}
 
           <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
             <div className="space-y-5">
