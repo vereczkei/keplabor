@@ -1138,7 +1138,13 @@ export default function App() {
           className="mb-6 rounded-[34px] border border-white/10 bg-white/[0.035] p-4 shadow-2xl backdrop-blur md:p-8"
         >
           <button
-            onClick={() => setShowPricing((v) => !v)}
+  onClick={() => {
+    setShowPricing(true);
+
+    setTimeout(() => {
+      scrollToPricing();
+    }, 80);
+  }}
             className="flex w-full items-center justify-between gap-4 text-left"
           >
             <div>
