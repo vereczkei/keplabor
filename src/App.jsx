@@ -4,6 +4,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -60,7 +62,10 @@ export default function App() {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
-  const [showLegal, setShowLegal] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [salesEnabled, setSalesEnabled] = useState(true);
+  const [capacityMessage, setCapacityMessage] = useState("");
+  const [savedVideos, setSavedVideos] = useState([]);
 
   const renderSteps = [
     "Kép elemzése...",
@@ -214,13 +219,32 @@ export default function App() {
 
       if (firebaseUser?.email) {
         checkCredits(false, firebaseUser);
+        fetchMyVideos(firebaseUser);
       } else {
         setCreditsLeft(null);
         setCreditsError("");
+        setSavedVideos([]);
       }
     });
 
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    fetchPublicStatus();
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user?.email) {
+          setUser(result.user);
+          checkCredits(false, result.user);
+          fetchMyVideos(result.user);
+          setMessage("Sikeres belépés. Most már tudsz videót generálni.");
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }, []);
 
   useEffect(() => {
@@ -262,16 +286,30 @@ export default function App() {
   async function handleLogin() {
     try {
       setMessage("Google belépés indítása...");
+      const isMobileLike = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobileLike) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
 
       if (result.user?.email) {
         setUser(result.user);
         await checkCredits(false, result.user);
+        await fetchMyVideos(result.user);
         setMessage("Sikeres belépés. Most már tudsz videót generálni.");
       }
     } catch (error) {
       console.log(error);
-      setMessage("Google belépési hiba: " + error.message);
+
+      try {
+        await signInWithRedirect(auth, googleProvider);
+      } catch (redirectError) {
+        console.log(redirectError);
+        setMessage("Google belépési hiba: " + (redirectError.message || error.message));
+      }
     }
   }
 
@@ -279,7 +317,48 @@ export default function App() {
     await signOut(auth);
     setUser(null);
     setCreditsLeft(null);
+    setSavedVideos([]);
     setMessage("Kiléptél a fiókból.");
+  }
+
+  async function fetchPublicStatus() {
+    try {
+      const res = await fetch(`${API_URL}/public-status`);
+      const data = await res.json();
+
+      if (typeof data.sales_enabled !== "undefined") {
+        setSalesEnabled(Boolean(data.sales_enabled));
+      }
+
+      if (data.message && data.message !== "open") {
+        setCapacityMessage(data.message);
+      } else {
+        setCapacityMessage("");
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  async function fetchMyVideos(targetUser = auth.currentUser) {
+    const currentUser = targetUser || auth.currentUser;
+    if (!currentUser) return;
+
+    try {
+      const token = await getAuthToken(currentUser, true);
+
+      const res = await fetch(`${API_URL}/my-videos`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setSavedVideos(Array.isArray(data.videos) ? data.videos.slice(0, 5) : []);
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   async function checkCredits(showMsg = true, targetUser = auth.currentUser) {
@@ -326,6 +405,14 @@ export default function App() {
       const nextCredits = Number(data.credits ?? data.credit ?? data.credits_left ?? 0);
       setCreditsLeft(nextCredits);
 
+      if (typeof data.sales_enabled !== "undefined") {
+        setSalesEnabled(Boolean(data.sales_enabled));
+      }
+
+      if (data.capacity_status === "closed") {
+        setCapacityMessage("A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők.");
+      }
+
       if (showMsg) {
         setMessage(`Aktuális kredited: ${nextCredits}`);
       }
@@ -342,6 +429,11 @@ export default function App() {
     if (!auth.currentUser) {
       setMessage("Először jelentkezz be Google fiókkal.");
       scrollToGenerator();
+      return;
+    }
+
+    if (!salesEnabled) {
+      setMessage(capacityMessage || "A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők.");
       return;
     }
 
@@ -366,6 +458,10 @@ export default function App() {
 
       if (data.url) {
         window.location.href = data.url;
+      } else if (data.error === "capacity_closed") {
+        setSalesEnabled(false);
+        setCapacityMessage(data.message);
+        setMessage(data.message);
       } else {
         setMessage("Stripe hiba. Ellenőrizd a backend csomagbeállításait.");
       }
@@ -387,6 +483,12 @@ export default function App() {
     if (!image) {
       setMessage("Először tölts fel egy képet.");
       scrollToGenerator();
+      return;
+    }
+
+    if (!salesEnabled) {
+      setMessage(capacityMessage || "A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők.");
+      setShowPricing(true);
       return;
     }
 
@@ -440,6 +542,11 @@ export default function App() {
           setPreviewError("Nincs elég kredited a generáláshoz.");
           setShowPricing(true);
           scrollToPricing();
+        } else if (data.error === "capacity_closed") {
+          setSalesEnabled(false);
+          setCapacityMessage(data.message);
+          setPreviewError(data.message);
+          setShowPricing(true);
         } else if (data.error === "generation_failed") {
           setPreviewError(
             "A Veo most nem tudta elkészíteni a videót. Próbáld újra pár perc múlva, vagy válassz egyszerűbb képet / másik hangulatot."
@@ -461,6 +568,12 @@ export default function App() {
         await checkCredits(false, auth.currentUser);
       }
 
+      if (data.capacity_status === "closed") {
+        setSalesEnabled(false);
+        setCapacityMessage("A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők.");
+      }
+
+      await fetchMyVideos(auth.currentUser);
       setMessage("Elkészült a cinematic AI videód.");
     } catch (err) {
       console.log(err);
@@ -601,7 +714,7 @@ export default function App() {
               onClick={handleLogin}
               className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-black shadow-lg shadow-violet-900/30"
             >
-              Google belépés
+              Folytatás Google-fiókkal
             </button>
           )}
         </nav>
@@ -753,8 +866,11 @@ export default function App() {
               className="mb-5 flex w-full items-center justify-center gap-3 rounded-3xl bg-white px-5 py-4 text-lg font-black text-black shadow-lg shadow-violet-900/20"
             >
               <span className="text-2xl">G</span>
-              Folytatás Google fiókkal
+              Folytatás Google-fiókkal
             </button>
+            <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
+              Működik iPhone-on és Androidon is. Ha appon belüli böngészőből nem indul, nyisd meg Safariban vagy Chrome-ban.
+            </p>
           )}
 
           <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
@@ -923,12 +1039,14 @@ export default function App() {
 
               <button
                 onClick={generateVideo}
-                disabled={loading}
+                disabled={loading || !salesEnabled}
                 className="w-full rounded-3xl bg-gradient-to-r from-violet-600 to-cyan-500 py-5 text-lg font-black shadow-lg shadow-violet-900/40 transition active:scale-[0.98] disabled:opacity-60"
               >
                 {loading
                   ? "🎬 AI jelenet készül..."
-                  : `✨ Generálás — ${currentVideoMode?.label}`}
+                  : !salesEnabled
+                    ? "Hamarosan újra elérhető"
+                    : `✨ Generálás — ${currentVideoMode?.label}`}
               </button>
 
               {message && (
@@ -1036,6 +1154,12 @@ export default function App() {
             </div>
           </button>
 
+          {!salesEnabled && (
+            <div className="mt-5 rounded-3xl border border-yellow-300/20 bg-yellow-300/10 p-4 text-sm font-bold text-yellow-100">
+              {capacityMessage || "A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők."}
+            </div>
+          )}
+
           {showPricing && (
             <div className="mt-5 grid gap-3 md:grid-cols-3">
               {pricingPackages.map((pkg) => (
@@ -1067,14 +1191,14 @@ export default function App() {
 
                   <button
                     onClick={() => buyCredits(pkg.id)}
-                    disabled={buying}
-                    className={`mt-5 w-full rounded-2xl px-4 py-4 font-black ${
+                    disabled={buying || !salesEnabled}
+                    className={`mt-5 w-full rounded-2xl px-4 py-4 font-black disabled:cursor-not-allowed disabled:opacity-50 ${
                       pkg.highlight
                         ? "bg-gradient-to-r from-violet-600 to-cyan-500 text-white"
                         : "bg-white text-black"
                     }`}
                   >
-                    {buying ? "Indítás..." : "Megveszem"}
+                    {!salesEnabled ? "Hamarosan újra elérhető" : buying ? "Indítás..." : "Megveszem"}
                   </button>
                 </div>
               ))}
@@ -1082,125 +1206,69 @@ export default function App() {
           )}
         </section>
 
-        <section className="mb-6 rounded-[34px] border border-white/10 bg-black/25 p-5 shadow-2xl backdrop-blur md:p-8">
-          <button
-            onClick={() => setShowLegal((v) => !v)}
-            className="flex w-full items-center justify-between gap-4 text-left"
+        <section className="mb-6 rounded-[34px] border border-yellow-300/20 bg-yellow-300/10 p-5 text-center shadow-2xl backdrop-blur md:p-8">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-yellow-200">
+            egyedi kérésed van?
+          </p>
+
+          <h2 className="text-3xl font-black md:text-4xl">
+            Hosszabb és egyedibb AI videók külön kérésre
+          </h2>
+
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-yellow-50/80 md:text-base">
+            Ha hosszabb, személyre szabottabb vagy reklámcélú AI videót szeretnél,
+            írj emailt, és egyedi ajánlatot adunk.
+          </p>
+
+          <a
+            href="mailto:vereczkeijanosgabor@gmail.com?subject=Egyedi%20K%C3%A9plabor%20AI%20vide%C3%B3%20k%C3%A9r%C3%A9s"
+            className="mt-5 inline-flex items-center justify-center rounded-3xl bg-yellow-300 px-7 py-4 font-black text-black shadow-lg shadow-yellow-950/30 transition active:scale-[0.98]"
           >
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-violet-300">
-                jogi információk
-              </p>
-
-              <h2 className="text-2xl font-black">
-                ÁSZF, adatkezelés és felhasználási feltételek
-              </h2>
-
-              <p className="mt-2 text-sm text-zinc-400">
-                Rövid, általános tájékoztató a szolgáltatás használatáról.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-black">
-              {showLegal ? "−" : "+"}
-            </div>
-          </button>
-
-          {showLegal && (
-            <div className="mt-5 space-y-4 text-sm leading-relaxed text-zinc-300">
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                <h3 className="mb-2 text-lg font-black text-white">
-                  Általános Szerződési Feltételek
-                </h3>
-
-                <p>
-                  A Képlabor egy online AI videógeneráló szolgáltatás, amely a
-                  felhasználó által feltöltött képből és kiválasztott
-                  beállításokból mesterséges intelligencia segítségével videós
-                  tartalmat készít. A szolgáltatás használatával a felhasználó
-                  elfogadja, hogy a generált eredmény minősége függhet a
-                  feltöltött kép minőségétől, a választott stílustól, az AI
-                  modell aktuális működésétől és a rendszer terheltségétől.
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                <h3 className="mb-2 text-lg font-black text-white">
-                  Kreditek és fizetés
-                </h3>
-
-                <p>
-                  A szolgáltatás kreditalapú rendszerben működik. A felhasználó
-                  kreditcsomagot vásárolhat, amelyet videógenerálásra használhat
-                  fel. A fizetés külső fizetési szolgáltatón, például Stripe-on
-                  keresztül történhet. Sikertelen generálás esetén a rendszer
-                  célja, hogy ne vonjon le kreditet, vagy technikai hiba esetén
-                  a felhasználó kérhesse a jóváírás ellenőrzését.
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                <h3 className="mb-2 text-lg font-black text-white">
-                  Feltöltött tartalom
-                </h3>
-
-                <p>
-                  A felhasználó kizárólag olyan képet tölthet fel, amelynek
-                  használatára jogosult. Tilos más személy jogait, jó hírnevét,
-                  személyiségi jogait vagy szerzői jogait sértő tartalmat
-                  feltölteni. A felhasználó felel a feltöltött kép jogszerű
-                  használatáért.
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                <h3 className="mb-2 text-lg font-black text-white">
-                  Adatkezelés
-                </h3>
-
-                <p>
-                  A Képlabor a szolgáltatás működéséhez szükséges adatokat,
-                  például e-mail címet, kreditállapotot, fizetési státuszt és a
-                  generáláshoz szükséges feltöltött képet kezelheti. A fizetési
-                  adatokat a fizetési szolgáltató kezeli. A szolgáltatás célja,
-                  hogy csak a működéshez szükséges adatokat használja.
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                <h3 className="mb-2 text-lg font-black text-white">
-                  Béta működés
-                </h3>
-
-                <p>
-                  A szolgáltatás jelenleg korai béta állapotban is működhet,
-                  ezért előfordulhatnak technikai hibák, lassabb generálási idők
-                  vagy változó minőségű eredmények. A fejlesztő fenntartja a
-                  jogot a funkciók, árak, kreditértékek és szolgáltatási
-                  feltételek módosítására.
-                </p>
-              </div>
-
-              <div className="rounded-3xl border border-yellow-400/20 bg-yellow-400/10 p-5 text-yellow-100">
-                <strong>Fontos:</strong> ez egy általános, ideiglenes jogi
-                szöveg. Éles fizetéses működés előtt érdemes hivatalos ÁSZF-et,
-                adatkezelési tájékoztatót és impresszumot készíteni.
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                <h3 className="mb-2 text-lg font-black text-white">
-                  Kapcsolat
-                </h3>
-
-                <p>
-                  Kérdés, technikai hiba vagy kreditprobléma esetén a
-                  szolgáltatóval a weboldalon megadott kapcsolati e-mail címen
-                  lehet egyeztetni.
-                </p>
-              </div>
-            </div>
-          )}
+            Emailt küldök
+          </a>
         </section>
+
+        {user && savedVideos.length > 0 && (
+          <section className="mb-6 rounded-[34px] border border-white/10 bg-white/[0.035] p-5 shadow-2xl backdrop-blur md:p-8">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300">
+                  mentett videók
+                </p>
+                <h2 className="text-2xl font-black">Legutóbbi 5 videód</h2>
+              </div>
+
+              <button
+                onClick={() => fetchMyVideos(user)}
+                className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs font-black text-zinc-200"
+              >
+                Frissítés
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {savedVideos.map((item) => (
+                <a
+                  key={item.video_id}
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-3xl border border-white/10 bg-black/30 p-3 transition hover:bg-white/10"
+                >
+                  <video
+                    src={item.url}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="mb-3 h-40 w-full rounded-2xl object-cover"
+                  />
+                  <div className="text-sm font-black">Képlabor videó</div>
+                  <div className="text-xs text-zinc-400">{item.duration || 6} mp · megnyitás</div>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="rounded-[34px] border border-white/10 bg-black/25 p-5 text-center shadow-2xl backdrop-blur md:p-10">
           <h2 className="mb-3 text-3xl font-black md:text-5xl">
@@ -1220,6 +1288,74 @@ export default function App() {
           </button>
         </section>
       </div>
+
+      <footer className="relative mx-auto max-w-6xl px-4 pb-28 pt-2 text-center text-[11px] text-zinc-600 md:pb-10">
+        <p>© 2026 Képlabor.hu – Magyar AI videólabor</p>
+        <button
+          onClick={() => setShowTerms(true)}
+          className="mt-2 underline underline-offset-4 hover:text-zinc-300"
+        >
+          ÁSZF
+        </button>
+      </footer>
+
+      {showTerms && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 px-4">
+          <div className="max-h-[82vh] w-full max-w-2xl overflow-y-auto rounded-[30px] border border-white/10 bg-[#080912] p-6 text-left shadow-2xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-xl font-black text-white">
+                Általános Szerződési Feltételek
+              </h2>
+
+              <button
+                onClick={() => setShowTerms(false)}
+                className="rounded-full bg-white/10 px-3 py-1 text-sm text-white hover:bg-white/20"
+              >
+                Bezárás
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm leading-relaxed text-zinc-300">
+              <p>
+                A Képlabor.hu egy magyar fejlesztésű AI videógeneráló szolgáltatás,
+                amely képekből mesterséges intelligencia segítségével rövid,
+                látványos videókat készít.
+              </p>
+
+              <p>
+                A szolgáltatás használatával a felhasználó elfogadja, hogy az AI által
+                generált eredmények eltérhetnek az előzetes elképzeléstől, mivel a
+                videók automatikus generálási folyamat eredményei.
+              </p>
+
+              <p>
+                Sikertelen generálás esetén a rendszer célja, hogy ne vonjon le kreditet.
+                A szolgáltató fenntartja a jogot, hogy technikai hiba, kapacitáshiány
+                vagy karbantartás esetén a generálást és a vásárlást ideiglenesen
+                szüneteltesse.
+              </p>
+
+              <p>
+                A felhasználó kizárólag olyan képet tölthet fel, amelynek felhasználására
+                jogosult. Tilos jogsértő, megtévesztő, sértő vagy mások személyiségi jogait
+                sértő tartalmak feltöltése.
+              </p>
+
+              <p>
+                Egyedi, hosszabb vagy speciális videók készítése külön egyeztetés alapján
+                kérhető a vereczkeijanosgabor@gmail.com email címen.
+              </p>
+
+              <p>Kapcsolat: vereczkeijanosgabor@gmail.com</p>
+
+              <div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-4 text-yellow-100">
+                Ez egy ideiglenes, induló tájékoztató. Éles, nagyobb forgalmú működés előtt
+                érdemes hivatalos ÁSZF-et, adatkezelési tájékoztatót és impresszumot készíteni.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="fixed inset-x-3 bottom-3 z-50 rounded-3xl border border-white/10 bg-[#090b16]/90 p-3 shadow-2xl backdrop-blur-xl md:hidden">
         <div className="flex items-center justify-between gap-3">

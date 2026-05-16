@@ -3,6 +3,8 @@ import uuid
 import time
 import json
 import subprocess
+import smtplib
+from email.message import EmailMessage
 import modal
 import stripe
 import firebase_admin
@@ -44,11 +46,20 @@ app = modal.App("video-test", image=image)
 api = FastAPI()
 
 users_db = modal.Dict.from_name("video-users-db", create_if_missing=True)
+capacity_db = modal.Dict.from_name("keplabor-capacity-db", create_if_missing=True)
+notifications_db = modal.Dict.from_name("keplabor-notifications-db", create_if_missing=True)
+videos_db = modal.Dict.from_name("keplabor-saved-videos-db", create_if_missing=True)
 video_volume = modal.Volume.from_name("keplabor-videos", create_if_missing=True)
 
 MODAL_BASE_URL = "https://vereczkeijanosgabor--video-test-fastapi-app.modal.run"
 FRONTEND_URL = "https://keplabor.hu"
 VIDEO_DIR = "/outputs"
+
+ADMIN_ALERT_EMAIL = os.environ.get("ADMIN_ALERT_EMAIL", "vereczkeijanosgabor@gmail.com")
+DEFAULT_CAPACITY_SECONDS = int(os.environ.get("DEFAULT_CAPACITY_SECONDS", "480"))
+ALERT_THRESHOLD_SECONDS = int(os.environ.get("ALERT_THRESHOLD_SECONDS", "30"))
+BLOCK_THRESHOLD_SECONDS = int(os.environ.get("BLOCK_THRESHOLD_SECONDS", "15"))
+MAX_SAVED_VIDEOS = 5
 
 api.add_middleware(
     CORSMiddleware,
@@ -355,6 +366,140 @@ SCENE_SCHEMA = {
         "safe_motion_ideas",
     ],
 }
+
+
+
+def now_ts():
+    return int(time.time())
+
+
+def get_capacity_seconds():
+    return int(capacity_db.get("seconds_left", DEFAULT_CAPACITY_SECONDS))
+
+
+def set_capacity_seconds(seconds: int):
+    seconds = max(0, int(seconds))
+    capacity_db["seconds_left"] = seconds
+
+    if seconds > ALERT_THRESHOLD_SECONDS:
+        notifications_db["capacity_alert_sent"] = False
+        notifications_db["capacity_block_sent"] = False
+
+    return seconds
+
+
+def reduce_capacity_seconds(seconds_used: int):
+    current = get_capacity_seconds()
+    next_value = max(0, current - int(seconds_used))
+    capacity_db["seconds_left"] = next_value
+    return next_value
+
+
+def is_capacity_open():
+    return get_capacity_seconds() > BLOCK_THRESHOLD_SECONDS
+
+
+def send_admin_email(subject: str, body: str):
+    """
+    SMTP beállítás Modal Secretből:
+    SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, opcionálisan SMTP_FROM.
+    Ha nincs beállítva, nem dob hibát, csak logol.
+    """
+    smtp_host = os.environ.get("SMTP_HOST")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASS")
+    smtp_from = os.environ.get("SMTP_FROM", smtp_user or ADMIN_ALERT_EMAIL)
+
+    full_body = body.strip() + "\n\n---\nKéplabor automatikus rendszerüzenet"
+
+    if not smtp_host or not smtp_user or not smtp_pass:
+        print("ADMIN EMAIL NOT SENT - missing SMTP settings")
+        print("TO:", ADMIN_ALERT_EMAIL)
+        print("SUBJECT:", subject)
+        print("BODY:", full_body)
+        return False
+
+    try:
+        msg = EmailMessage()
+        msg["From"] = smtp_from
+        msg["To"] = ADMIN_ALERT_EMAIL
+        msg["Subject"] = subject
+        msg.set_content(full_body)
+
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+
+        print("ADMIN EMAIL SENT:", subject)
+        return True
+
+    except Exception as e:
+        print("ADMIN EMAIL SEND FAILED:", e)
+        return False
+
+
+def send_once(flag_key: str, subject: str, body: str):
+    if notifications_db.get(flag_key, False):
+        return False
+
+    sent = send_admin_email(subject, body)
+    notifications_db[flag_key] = True
+    return sent
+
+
+def check_capacity_events(seconds_left: int):
+    if seconds_left <= ALERT_THRESHOLD_SECONDS:
+        send_once(
+            "capacity_alert_sent",
+            "⚠️ Képlabor kapacitás alacsony",
+            f"A Képlabor generálási kapacitása {seconds_left} mp-re csökkent. 15 mp alatt a vásárlás és generálás automatikusan lezár.",
+        )
+
+    if seconds_left <= BLOCK_THRESHOLD_SECONDS:
+        send_once(
+            "capacity_block_sent",
+            "⛔ Képlabor kapacitás lezárva",
+            f"A Képlabor kapacitása {seconds_left} mp-re csökkent. A vásárlás és generálás automatikusan zárva van.",
+        )
+
+
+def notify_closed_attempt(email: str, action: str, details: str = ""):
+    key = f"closed_attempt_{action}_{email}_{now_ts() // 3600}"
+    send_once(
+        key,
+        f"👀 Képlabor érdeklődés lezárt kapacitás alatt: {action}",
+        f"User: {email}\nMűvelet: {action}\nKapacitás: {get_capacity_seconds()} mp\nRészletek: {details or '-'}",
+    )
+
+
+def save_user_video(email: str, video_id: str, url: str, category: str, video_mode: str, duration: int):
+    email = email.strip().lower()
+    current = videos_db.get(email, [])
+
+    item = {
+        "video_id": video_id,
+        "url": url,
+        "category": category,
+        "video_mode": video_mode,
+        "duration": duration,
+        "created_at": now_ts(),
+    }
+
+    videos_db[email] = [item] + current[: MAX_SAVED_VIDEOS - 1]
+    return videos_db[email]
+
+
+def capacity_closed_response(email: str | None = None, action: str = "general"):
+    if email:
+        notify_closed_attempt(email, action)
+
+    return {
+        "error": "capacity_closed",
+        "message": "A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők.",
+        "sales_enabled": False,
+    }
 
 
 def get_stripe():
@@ -762,6 +907,9 @@ def render_video(
     duration = int(settings["duration"])
     credit_cost = int(settings["credit_cost"])
 
+    if not is_capacity_open():
+        return capacity_closed_response(email, "generate")
+
     credits = int(users_db.get(email, 0))
 
     if credits < credit_cost:
@@ -805,6 +953,10 @@ def render_video(
         )
 
         users_db[email] = credits - credit_cost
+        capacity_left = reduce_capacity_seconds(duration)
+        check_capacity_events(capacity_left)
+        download_url = f"{MODAL_BASE_URL}/download/{video_id}"
+        save_user_video(email, video_id, download_url, category, video_mode, duration)
         video_volume.commit()
 
     except Exception as e:
@@ -829,8 +981,9 @@ def render_video(
         "video_mode": video_mode,
         "duration": duration,
         "credit_cost": credit_cost,
-        "download": f"{MODAL_BASE_URL}/download/{video_id}",
+        "download": download_url,
         "credits_left": int(users_db.get(email, 0)),
+        "capacity_status": "open" if is_capacity_open() else "closed",
         "cinematic_prompt": cinematic_prompt,
         "scene_analysis": scene_analysis,
         "status": "ready",
@@ -850,6 +1003,8 @@ def home():
         "categories": list(ALLOWED_CATEGORIES),
         "templates": list(ALLOWED_TEMPLATES),
         "moods": list(ALLOWED_MOODS),
+        "sales_enabled": is_capacity_open(),
+        "capacity_status": "open" if is_capacity_open() else "closed",
     }
 
 
@@ -864,6 +1019,9 @@ async def buy_credits(
     package_id = data.get("package_id", "starter")
 
     package = CREDIT_PACKAGES.get(package_id)
+
+    if not is_capacity_open():
+        return capacity_closed_response(email, f"buy_{package_id}")
 
     if not package:
         return {
@@ -952,6 +1110,10 @@ async def stripe_webhook(request: Request):
             current_credits = int(users_db.get(email, 0))
             users_db[email] = current_credits + credits_to_add
             print(f"CREDITS ADDED: {email} +{credits_to_add}, total={users_db[email]}")
+            send_admin_email(
+                "✅ Képlabor Stripe fizetés sikeres",
+                f"User: {email}\nJóváírt kredit: {credits_to_add}\nÖsszes kredit: {users_db[email]}",
+            )
         else:
             print("WEBHOOK PAYMENT RECEIVED BUT MISSING EMAIL OR CREDITS")
             print("SESSION:", session)
@@ -968,6 +1130,62 @@ async def check_credits(
     return {
         "email": email,
         "credits": int(users_db.get(email, 0)),
+        "sales_enabled": is_capacity_open(),
+        "capacity_status": "open" if is_capacity_open() else "closed",
+    }
+
+
+
+@api.post("/my-videos")
+async def my_videos(
+    authorization: str = Header(None),
+):
+    email = get_current_user_email(authorization)
+    return {
+        "ok": True,
+        "videos": videos_db.get(email, [])[:MAX_SAVED_VIDEOS],
+    }
+
+
+@api.get("/public-status")
+def public_status():
+    return {
+        "sales_enabled": is_capacity_open(),
+        "capacity_status": "open" if is_capacity_open() else "closed",
+        "message": "A béta kapacitás jelenleg megtelt. Új csomagok hamarosan elérhetők." if not is_capacity_open() else "open",
+    }
+
+
+@api.post("/admin-set-capacity")
+async def admin_set_capacity(
+    request: Request,
+    x_app_secret: str = Header(None),
+):
+    require_app_secret(x_app_secret)
+
+    data = await request.json()
+    seconds = int(data.get("seconds", DEFAULT_CAPACITY_SECONDS))
+    next_seconds = set_capacity_seconds(seconds)
+
+    return {
+        "ok": True,
+        "seconds_left": next_seconds,
+        "sales_enabled": is_capacity_open(),
+    }
+
+
+@api.post("/admin-capacity")
+async def admin_capacity(
+    x_app_secret: str = Header(None),
+):
+    require_app_secret(x_app_secret)
+
+    return {
+        "ok": True,
+        "seconds_left": get_capacity_seconds(),
+        "alert_threshold_seconds": ALERT_THRESHOLD_SECONDS,
+        "block_threshold_seconds": BLOCK_THRESHOLD_SECONDS,
+        "sales_enabled": is_capacity_open(),
     }
 
 
