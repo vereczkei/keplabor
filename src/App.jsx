@@ -25,14 +25,14 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 
-async function getAuthToken() {
-  const currentUser = auth.currentUser;
+async function getAuthToken(targetUser = auth.currentUser, forceRefresh = true) {
+  const currentUser = targetUser || auth.currentUser;
 
   if (!currentUser) {
     throw new Error("Nincs bejelentkezett felhasználó.");
   }
 
-  return await currentUser.getIdToken();
+  return await currentUser.getIdToken(forceRefresh);
 }
 
 export default function App() {
@@ -49,6 +49,8 @@ export default function App() {
   const [videoUrl, setVideoUrl] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [creditsLeft, setCreditsLeft] = useState(null);
+  const [creditsLoading, setCreditsLoading] = useState(false);
+  const [creditsError, setCreditsError] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -211,12 +213,33 @@ export default function App() {
       setUser(firebaseUser);
 
       if (firebaseUser?.email) {
-        checkCredits(false);
+        checkCredits(false, firebaseUser);
+      } else {
+        setCreditsLeft(null);
+        setCreditsError("");
       }
     });
 
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get("payment");
+
+    if (paymentStatus === "success") {
+      setMessage("Fizetés után frissítem a krediteket...");
+      setTimeout(() => checkCredits(true, user), 900);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    if (paymentStatus === "cancel") {
+      setMessage("A fizetés megszakítva.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!loading) {
@@ -243,7 +266,7 @@ export default function App() {
 
       if (result.user?.email) {
         setUser(result.user);
-        await checkCredits(false);
+        await checkCredits(false, result.user);
         setMessage("Sikeres belépés. Most már tudsz videót generálni.");
       }
     } catch (error) {
@@ -259,37 +282,59 @@ export default function App() {
     setMessage("Kiléptél a fiókból.");
   }
 
-  async function checkCredits(showMsg = true) {
-    if (!auth.currentUser) {
+  async function checkCredits(showMsg = true, targetUser = auth.currentUser) {
+    const currentUser = targetUser || auth.currentUser;
+
+    if (!currentUser) {
+      setCreditsLeft(null);
+      setCreditsError("");
       if (showMsg) setMessage("Nincs bejelentkezett felhasználó.");
       return;
     }
 
+    setCreditsLoading(true);
+    setCreditsError("");
+
     try {
-      const token = await getAuthToken();
+      const token = await getAuthToken(currentUser, true);
 
       const res = await fetch(`${API_URL}/check-credits`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          email: currentUser.email,
+        }),
       });
 
-      const data = await res.json();
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
 
-      if (data.error) {
-        if (showMsg) setMessage("Kredit ellenőrzési hiba.");
+      if (!res.ok || data.error) {
+        const errorText = data.error || `HTTP ${res.status}`;
+        setCreditsError(errorText);
+        if (showMsg) setMessage("Kredit ellenőrzési hiba: " + errorText);
         return;
       }
 
-      setCreditsLeft(data.credits);
+      const nextCredits = Number(data.credits ?? data.credit ?? data.credits_left ?? 0);
+      setCreditsLeft(nextCredits);
 
       if (showMsg) {
-        setMessage(`Aktuális kredited: ${data.credits}`);
+        setMessage(`Aktuális kredited: ${nextCredits}`);
       }
     } catch (err) {
       console.log(err);
+      setCreditsError(err.message || "ismeretlen hiba");
       if (showMsg) setMessage("Szerver hiba kredit ellenőrzésnél.");
+    } finally {
+      setCreditsLoading(false);
     }
   }
 
@@ -409,7 +454,13 @@ export default function App() {
 
       setRenderProgress(100);
       setVideoUrl(data.download);
-      setCreditsLeft(data.credits_left);
+
+      if (typeof data.credits_left !== "undefined") {
+        setCreditsLeft(Number(data.credits_left));
+      } else {
+        await checkCredits(false, auth.currentUser);
+      }
+
       setMessage("Elkészült a cinematic AI videód.");
     } catch (err) {
       console.log(err);
@@ -480,6 +531,33 @@ export default function App() {
     </div>
   );
 
+  const CreditBadge = ({ compact = false }) => {
+    if (!user) return null;
+
+    return (
+      <button
+        type="button"
+        onClick={() => checkCredits(true, user)}
+        className={`rounded-2xl border border-cyan-300/25 bg-cyan-300/10 text-left font-black text-cyan-100 shadow-lg shadow-cyan-950/20 backdrop-blur transition active:scale-[0.98] ${
+          compact ? "px-3 py-2 text-xs" : "px-4 py-3 text-sm"
+        }`}
+        title={creditsError ? `Kredit hiba: ${creditsError}` : "Kredit frissítése"}
+      >
+        <span className="block text-[10px] uppercase tracking-[0.18em] text-cyan-300">
+          Kredit
+        </span>
+        <span className="block text-white">
+          {creditsLoading ? "frissítés..." : `${creditsLeft ?? 0} kredit`}
+        </span>
+        {creditsError && (
+          <span className="mt-1 block max-w-[150px] truncate text-[10px] text-red-200">
+            hiba: {creditsError}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#050816] pb-24 text-white">
       <div className="pointer-events-none fixed inset-0">
@@ -509,12 +587,7 @@ export default function App() {
 
           {user ? (
             <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur">
-              <button
-                onClick={scrollToPricing}
-                className="rounded-xl bg-white px-3 py-2 text-xs font-black text-black"
-              >
-                {creditsLeft ?? "—"} kredit
-              </button>
+              <CreditBadge compact />
 
               <button
                 onClick={handleLogout}
@@ -671,13 +744,7 @@ export default function App() {
               </p>
             </div>
 
-            {user && (
-              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-right text-xs font-bold text-cyan-200">
-                {creditsLeft ?? "—"}
-                <br />
-                kredit
-              </div>
-            )}
+            <CreditBadge compact />
           </div>
 
           {!user && (
@@ -1157,7 +1224,9 @@ export default function App() {
       <div className="fixed inset-x-3 bottom-3 z-50 rounded-3xl border border-white/10 bg-[#090b16]/90 p-3 shadow-2xl backdrop-blur-xl md:hidden">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-black">1 kép → AI videó</div>
+            <div className="text-sm font-black">
+              {user ? `${creditsLoading ? "Kredit frissül..." : `${creditsLeft ?? 0} kredit`}` : "1 kép → AI videó"}
+            </div>
             <div className="text-xs text-zinc-400">6 mp már 1 kredit</div>
           </div>
 

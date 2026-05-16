@@ -55,10 +55,6 @@ api = FastAPI()
 # FIREBASE ADMIN
 # =========================
 
-if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase-service-account.json")
-    firebase_admin.initialize_app(cred)
-
 users_db = modal.Dict.from_name("video-users-db", create_if_missing=True)
 video_volume = modal.Volume.from_name("keplabor-videos", create_if_missing=True)
 
@@ -176,92 +172,181 @@ ALLOWED_MOODS = {
 
 THEME_BLUEPRINTS = {
     "luxury": {
-        "goal": "premium luxury commercial image-to-video scene",
-        "shot": "medium cinematic portrait or product-style hero shot",
-        "camera": "slow smooth tracking shot with subtle dolly-in movement",
-        "motion": "subtle wind, elegant fabric movement, gentle head or body motion, premium reveal",
-        "environment": "glossy reflections and high-end commercial atmosphere",
-        "lighting": "golden rim light, soft cinematic highlights, polished contrast",
-        "style": "luxury fashion advertisement, expensive brand film, clean polished realism",
-        "audio": "soft premium ambient music with elegant cinematic atmosphere",
-        "negative": "text, subtitles, logos, watermark, distorted face, broken hands, flicker, chaotic motion",
+        "goal": "premium luxury commercial image-to-video scene with controlled wow factor",
+        "shot": "medium cinematic portrait or product-style hero shot with premium framing",
+        "camera": "slow smooth dolly-in, subtle parallax, elegant commercial reveal, controlled cinematic push",
+        "motion": (
+            "elegant slow motion movement, subtle wind, cinematic fabric movement, "
+            "reactive glossy reflections, premium light streaks, soft atmospheric fog, "
+            "luxury reveal transition around the subject"
+        ),
+        "environment": (
+            "high-end cinematic luxury environment with moving reflections, soft atmospheric depth, "
+            "premium commercial lighting changes and subtle background evolution while preserving the original subject"
+        ),
+        "lighting": (
+            "golden rim light, soft cinematic highlights, glossy luxury reflections, "
+            "gentle moving light sweep across the scene"
+        ),
+        "style": "luxury fashion advertisement, expensive brand film, polished realism, premium social-ready cinematic look",
+        "audio": "soft premium ambient music with elegant cinematic rise, subtle whoosh and luxury atmosphere",
+        "negative": (
+            "text, subtitles, logos, watermark, distorted face, broken hands, flicker, chaotic motion, "
+            "identity change, outfit replacement, excessive transformation"
+        ),
     },
+
     "love": {
-        "goal": "romantic cinematic image-to-video scene",
-        "shot": "soft medium close-up or gentle couple framing",
-        "camera": "slow emotional push-in with soft handheld cinematic feeling",
-        "motion": "natural smiles, subtle eye contact, gentle breeze, warm human micro movements",
-        "environment": "romantic atmosphere with soft background depth",
-        "lighting": "warm golden light, soft glow, gentle highlights on faces",
+        "goal": "romantic cinematic image-to-video scene with emotional atmosphere",
+        "shot": "soft medium close-up or gentle couple framing with warm emotional composition",
+        "camera": "slow emotional push-in with soft handheld cinematic feeling and gentle parallax",
+        "motion": (
+            "natural smiles, subtle eye contact, gentle breeze, warm human micro movements, "
+            "soft background glow and delicate romantic atmosphere"
+        ),
+        "environment": (
+            "romantic atmosphere with soft background depth, warm light movement and gentle environmental motion "
+            "without changing the people or relationship spacing"
+        ),
+        "lighting": "warm golden light, soft glow, gentle highlights on faces, subtle romantic light bloom",
         "style": "wedding film realism, intimate love story, elegant romantic cinematic look",
         "audio": "soft romantic piano ambience with warm natural background sound",
-        "negative": "identity drift, swapped faces, distorted faces, text, logos, watermark, chaotic movement",
+        "negative": (
+            "identity drift, swapped faces, distorted faces, text, logos, watermark, chaotic movement, "
+            "sexualized movement, aggressive transformation"
+        ),
     },
+
     "memory": {
-        "goal": "emotional memory film from a real photo",
+        "goal": "emotional memory film from a real photo with respectful subtle motion",
         "shot": "nostalgic medium shot with respectful composition",
-        "camera": "slow nostalgic push-in with gentle parallax",
-        "motion": "very subtle lifelike movement, soft background motion, gentle breathing or expression",
-        "environment": "warm memory atmosphere, realistic and respectful",
-        "lighting": "soft warm natural light, nostalgic glow, delicate contrast",
+        "camera": "slow nostalgic push-in with gentle parallax and calm documentary movement",
+        "motion": (
+            "very subtle lifelike movement, soft background motion, gentle breathing or expression, "
+            "small nostalgic light movement"
+        ),
+        "environment": (
+            "warm memory atmosphere, realistic and respectful, slight environmental depth and soft emotional glow"
+        ),
+        "lighting": "soft warm natural light, nostalgic glow, delicate contrast, gentle highlight movement",
         "style": "documentary memory film, emotional realism, respectful family-photo atmosphere",
         "audio": "soft emotional piano with warm ambient room tone",
-        "negative": "exaggerated fantasy, face distortion, identity drift, text, logos, watermark",
+        "negative": (
+            "exaggerated fantasy, face distortion, identity drift, text, logos, watermark, aggressive effects, "
+            "changing age, changing identity"
+        ),
     },
+
     "fantasy": {
-        "goal": "magical fantasy cinematic scene based on the uploaded image",
-        "shot": "cinematic subject shot with magical background depth",
-        "camera": "floating cinematic camera movement with slow reveal",
-        "motion": "subtle glowing particles, gentle environmental motion, magical atmosphere around the subject",
-        "environment": "dreamlike fantasy world while keeping the uploaded subject recognizable",
-        "lighting": "soft magical glow, volumetric light, gentle highlights",
-        "style": "epic fantasy film look, magical but realistic, elegant transformation",
-        "audio": "soft fantasy ambience with light magical shimmer",
-        "negative": "overloaded effects, changed identity, distorted anatomy, text, logos, watermark",
+        "goal": "magical fantasy cinematic scene with strong but controlled wow effect",
+        "shot": "cinematic subject shot with magical background depth and heroic reveal",
+        "camera": (
+            "floating cinematic camera movement, slow reveal, slight orbit motion, dramatic depth shift "
+            "while keeping the subject recognizable"
+        ),
+        "motion": (
+            "cinematic magical energy waves, floating glowing particles, reactive lighting pulses, "
+            "atmospheric transformation around the subject, magical elements emerging from the background, "
+            "dynamic environment motion that builds toward a polished reveal"
+        ),
+        "environment": (
+            "dreamlike fantasy world partially transforming around the subject, with glowing atmosphere, "
+            "moving particles, volumetric light and subtle background evolution while preserving the original identity and composition"
+        ),
+        "lighting": (
+            "soft magical glow, volumetric light beams, dramatic color shift, gentle highlight pulses "
+            "around the subject"
+        ),
+        "style": "epic fantasy film look, magical but realistic, cinematic transformation, premium visual effects",
+        "audio": "soft fantasy ambience with magical shimmer, cinematic rise and subtle energy sound design",
+        "negative": (
+            "overloaded effects, changed identity, distorted anatomy, text, logos, watermark, face morphing, "
+            "body transformation, horror elements, chaotic particle storm"
+        ),
     },
+
     "celebrity": {
-        "goal": "glamour celebrity cinematic scene",
-        "shot": "red carpet style medium shot",
-        "camera": "controlled tracking shot with subtle paparazzi energy",
-        "motion": "natural posing, camera flashes, subtle hair and clothing movement",
-        "environment": "premium celebrity arrival atmosphere",
-        "lighting": "flash photography, glossy night lights, luxury reflections",
-        "style": "glamour magazine commercial, red carpet film, premium realistic look",
-        "audio": "distant crowd ambience, camera shutters and premium cinematic music",
-        "negative": "real celebrity impersonation, identity replacement, distorted face, text, logos, watermark",
+        "goal": "glamour celebrity cinematic scene with premium social wow effect",
+        "shot": "red carpet style medium shot with glossy editorial framing",
+        "camera": (
+            "controlled tracking shot with subtle paparazzi energy, slow push-in, premium glamour reveal "
+            "and dynamic foreground light flashes"
+        ),
+        "motion": (
+            "paparazzi camera flashes, luxury background activity, cinematic crowd silhouettes, "
+            "subtle hair and clothing movement, moving city lights, reflective glamour reveal"
+        ),
+        "environment": (
+            "luxury celebrity arrival atmosphere with cinematic city lights, moving reflections, "
+            "subtle crowd movement and dynamic background activity while keeping the subject unchanged"
+        ),
+        "lighting": "flash photography, glossy night lights, luxury reflections, moving light bursts, premium rim light",
+        "style": "glamour magazine commercial, red carpet film, premium realistic look, luxury social content",
+        "audio": "distant crowd ambience, camera shutters, soft cinematic music and premium event atmosphere",
+        "negative": (
+            "real celebrity impersonation, identity replacement, distorted face, text, logos, watermark, "
+            "crowd covering the subject, excessive face changes"
+        ),
     },
+
     "product": {
-        "goal": "premium product reveal for ecommerce or ad creative",
+        "goal": "premium product reveal for ecommerce or ad creative with strong commercial motion",
         "shot": "macro close-up opening shot or clean hero product shot",
-        "camera": "slow dolly out with subtle parallax and clean stabilization",
-        "motion": "slow product reveal, rotating light reflections, elegant background movement",
-        "environment": "clean premium studio or luxury commercial environment",
-        "lighting": "controlled studio lighting with glossy highlights and soft falloff",
+        "camera": "slow dolly out with subtle parallax, clean stabilization and premium reveal movement",
+        "motion": (
+            "slow product reveal, rotating light reflections, elegant background movement, "
+            "premium light sweep, subtle atmospheric particles and glossy commercial depth"
+        ),
+        "environment": (
+            "clean premium studio or luxury commercial environment with moving reflections, "
+            "soft atmospheric depth and polished brand-film energy"
+        ),
+        "lighting": "controlled studio lighting with glossy highlights, soft falloff and animated reflection movement",
         "style": "Apple-style clean commercial, luxury product film, minimal premium realism",
-        "audio": "clean premium product sound design with subtle whoosh and soft brand ambience",
-        "negative": "messy background, warped geometry, extra objects, text, logos, watermark",
+        "audio": "clean premium product sound design with subtle whoosh, soft impact and brand ambience",
+        "negative": (
+            "messy background, warped geometry, extra objects, text, logos, watermark, product deformation, "
+            "incorrect labels"
+        ),
     },
+
     "funny": {
-        "goal": "playful social-ready cinematic moment",
+        "goal": "playful social-ready cinematic moment with clean viral energy",
         "shot": "clear readable social media framing",
-        "camera": "dynamic but stable camera movement",
-        "motion": "fun reveal, expressive motion, playful energy without distortion",
-        "environment": "bright clean social video atmosphere",
-        "lighting": "clean bright lighting with colorful premium look",
-        "style": "premium social media ad, playful but high-quality",
+        "camera": "dynamic but stable camera movement with quick readable reveal",
+        "motion": (
+            "fun reveal, expressive motion, playful energy, small environmental reaction, "
+            "social-ready motion beat without distortion"
+        ),
+        "environment": "bright clean social video atmosphere with subtle background movement and playful energy",
+        "lighting": "clean bright lighting with colorful premium look and gentle animated highlights",
+        "style": "premium social media ad, playful but high-quality, fun cinematic realism",
         "audio": "light playful sound design with short viral-style music energy",
-        "negative": "chaotic motion, distorted face, broken anatomy, text, logos, watermark",
+        "negative": "chaotic motion, distorted face, broken anatomy, text, logos, watermark, ugly deformation",
     },
+
     "cinematic": {
-        "goal": "premium cinematic image-to-video scene",
-        "shot": "tight medium cinematic shot",
-        "camera": "slow cinematic push-in with natural handheld realism",
-        "motion": "natural subject movement, subtle background depth, elegant reveal",
-        "environment": "movie-like atmosphere based on the uploaded image",
-        "lighting": "dramatic but tasteful film lighting, soft shadows, realistic highlights",
-        "style": "movie trailer realism, premium film look, emotional visual storytelling",
-        "audio": "cinematic ambient music with natural environmental sound",
-        "negative": "distorted face, broken hands, flicker, text, subtitles, logos, watermark",
+        "goal": "premium cinematic image-to-video scene with controlled dramatic wow effect",
+        "shot": "tight medium cinematic shot with movie-like framing",
+        "camera": (
+            "slow cinematic push-in, natural handheld realism, subtle orbit or parallax movement, "
+            "dramatic reveal toward the end"
+        ),
+        "motion": (
+            "natural subject movement, subtle background depth, atmospheric motion, moving light rays, "
+            "soft environmental reaction and elegant cinematic reveal"
+        ),
+        "environment": (
+            "movie-like atmosphere based on the uploaded image, with subtle background evolution, "
+            "volumetric depth, light movement and cinematic environmental detail"
+        ),
+        "lighting": "dramatic but tasteful film lighting, soft shadows, realistic highlights, moving cinematic light sweep",
+        "style": "movie trailer realism, premium film look, emotional visual storytelling, cinematic social content",
+        "audio": "cinematic ambient music with natural environmental sound and subtle dramatic rise",
+        "negative": (
+            "distorted face, broken hands, flicker, text, subtitles, logos, watermark, identity change, "
+            "excessive fantasy effects"
+        ),
     },
 }
 
@@ -1102,6 +1187,7 @@ def download(video_id: str):
         modal.Secret.from_name("stripe-secret"),
         modal.Secret.from_name("app-auth"),
         modal.Secret.from_name("gemini-secret"),
+        modal.Secret.from_name("firebase-admin"),
     ],
     volumes={
         VIDEO_DIR: video_volume,
@@ -1111,4 +1197,14 @@ def download(video_id: str):
 @modal.asgi_app()
 def fastapi_app():
     os.makedirs(VIDEO_DIR, exist_ok=True)
+
+    if not firebase_admin._apps:
+        firebase_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+
+        if not firebase_json:
+            raise RuntimeError("Missing FIREBASE_SERVICE_ACCOUNT_JSON secret")
+
+        cred = credentials.Certificate(json.loads(firebase_json))
+        firebase_admin.initialize_app(cred)
+
     return api
