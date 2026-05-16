@@ -473,27 +473,48 @@ export default function App() {
     setBuying(false);
   }
 
-  async function waitForVideoReady(url, maxTries = 15, delay = 1500) {
-    let tries = 0;
+  async function waitForVideoReady(url, maxTries = 40, delay = 1500) {
+    const cleanUrl = url.split("?")[0];
 
-    while (tries < maxTries) {
-      try {
-        const cleanUrl = url.split("?")[0];
-        const testUrl = `${cleanUrl}?t=${Date.now()}`;
+    for (let attempt = 1; attempt <= maxTries; attempt += 1) {
+      const testUrl = `${cleanUrl}?t=${Date.now()}`;
 
-        const response = await fetch(testUrl, {
-          method: "HEAD",
-          cache: "no-store",
-        });
+      const isReady = await new Promise((resolve) => {
+        const probe = document.createElement("video");
 
-        if (response.ok) {
-          return testUrl;
-        }
-      } catch (err) {
-        console.log("Videó előnézet még nem elérhető, újrapróbálás...", err);
+        const cleanup = () => {
+          probe.onloadedmetadata = null;
+          probe.oncanplay = null;
+          probe.onerror = null;
+          probe.removeAttribute("src");
+          probe.load();
+        };
+
+        const ok = () => {
+          cleanup();
+          resolve(true);
+        };
+
+        const fail = () => {
+          cleanup();
+          resolve(false);
+        };
+
+        probe.preload = "metadata";
+        probe.muted = true;
+        probe.playsInline = true;
+        probe.onloadedmetadata = ok;
+        probe.oncanplay = ok;
+        probe.onerror = fail;
+        probe.src = testUrl;
+        probe.load();
+      });
+
+      if (isReady) {
+        return testUrl;
       }
 
-      tries += 1;
+      console.log(`Videó előnézet még nem olvasható, újrapróbálás: ${attempt}/${maxTries}`);
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
@@ -603,9 +624,10 @@ export default function App() {
         } catch (err) {
           console.log("Videó előnézet betöltési hiba:", err);
 
-          setPreviewError(
-            "A videó elkészült, de az előnézet lassan tölt be. Frissítsd a mentett videókat, vagy próbáld megnyitni a galériából."
-          );
+          setVideoUrl(finalUrl);
+          setPreviewError("");
+          setRenderProgress(100);
+          setMessage("Elkészült a cinematic AI videód.");
         }
       } else {
         setPreviewError(
