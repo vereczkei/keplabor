@@ -282,7 +282,28 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, [loading]);
+useEffect(() => {
+  async function finishRedirectLogin() {
+    try {
+      const result = await getRedirectResult(auth);
 
+      if (result?.user?.email) {
+        setUser(result.user);
+        await checkCredits(false, result.user);
+        await fetchMyVideos(result.user);
+        setMessage("Sikeres belépés. Most már tudsz videót generálni.");
+      }
+    } catch (error) {
+      console.log(error);
+      setMessage("Google belépési hiba: " + (error?.message || "ismeretlen hiba"));
+    }
+  }
+
+  finishRedirectLogin();
+}, []);
+
+async function handleLogin() {
+  
   async function handleLogin() {
     try {
       setMessage("Google belépés indítása...");
