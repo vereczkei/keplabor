@@ -774,13 +774,13 @@ export default function App() {
               <Sparkles className="h-6 w-6" />
             </div>
 
-            <div className="flex items-center gap-3 text-2xl font-black tracking-tight md:text-3xl">
+            <div className="relative text-2xl font-black tracking-tight md:text-3xl">
   <span>Képlabor</span>
 
   <img
     src="/by-vereczkei.png"
     alt="by Vereczkei"
-    className="hidden md:block h-8 w-auto ml-[2px]"
+    className="absolute left-[185px] top-[6px] h-5 w-auto opacity-100"
   />
 </div>
           </button>
