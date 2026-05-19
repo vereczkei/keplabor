@@ -212,39 +212,46 @@ export default function App() {
   );
 
   useEffect(() => {
-    setPersistence(auth, browserLocalPersistence);
+    let unsubscribe = () => {};
 
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
+    async function initAuth() {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
 
-      if (firebaseUser?.email) {
-        checkCredits(false, firebaseUser);
-        fetchMyVideos(firebaseUser);
-      } else {
-        setCreditsLeft(null);
-        setCreditsError("");
-        setSavedVideos([]);
+        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          setUser(firebaseUser);
+
+          if (firebaseUser?.email) {
+            await checkCredits(false, firebaseUser);
+            await fetchMyVideos(firebaseUser);
+          } else {
+            setCreditsLeft(null);
+            setCreditsError("");
+            setSavedVideos([]);
+          }
+        });
+
+        const result = await getRedirectResult(auth);
+
+        if (result?.user?.email) {
+          setUser(result.user);
+          await checkCredits(false, result.user);
+          await fetchMyVideos(result.user);
+          setMessage("Sikeres belépés. Most már tudsz videót generálni.");
+        }
+      } catch (error) {
+        console.log(error);
+        setMessage("Google belépési hiba: " + (error?.message || "ismeretlen hiba"));
       }
-    });
+    }
 
-    return () => unsub();
+    initAuth();
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     fetchPublicStatus();
-
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user?.email) {
-          setUser(result.user);
-          checkCredits(false, result.user);
-          fetchMyVideos(result.user);
-          setMessage("Sikeres belépés. Most már tudsz videót generálni.");
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
   }, []);
 
   useEffect(() => {
@@ -282,39 +289,6 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, [loading]);
-  useEffect(() => {
-  setPersistence(auth, browserLocalPersistence);
-
-  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-    if (firebaseUser?.email) {
-      setUser(firebaseUser);
-      await checkCredits(false, firebaseUser);
-      await fetchMyVideos(firebaseUser);
-      setMessage("Sikeres belépés.");
-    }
-  });
-
-  return () => unsubscribe();
-}, []);
-useEffect(() => {
-  async function finishRedirectLogin() {
-    try {
-      const result = await getRedirectResult(auth);
-
-      if (result?.user?.email) {
-        setUser(result.user);
-        await checkCredits(false, result.user);
-        await fetchMyVideos(result.user);
-        setMessage("Sikeres belépés. Most már tudsz videót generálni.");
-      }
-    } catch (error) {
-      console.log(error);
-      setMessage("Google belépési hiba: " + (error?.message || "ismeretlen hiba"));
-    }
-  }
-
-  finishRedirectLogin();
-}, []);
 
   async function handleLogin() {
     try {
@@ -322,7 +296,7 @@ useEffect(() => {
       const isMobileLike = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobileLike) {
-        await signInWithRedirect (auth, googleProvider);
+        await signInWithRedirect(auth, googleProvider);
         return;
       }
 
