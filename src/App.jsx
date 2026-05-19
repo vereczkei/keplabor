@@ -212,46 +212,49 @@ export default function App() {
   );
 
   useEffect(() => {
-    let unsubscribe = () => {};
+    let unsub = () => {};
 
     async function initAuth() {
       try {
         await setPersistence(auth, browserLocalPersistence);
-
-        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-          setUser(firebaseUser);
-
-          if (firebaseUser?.email) {
-            await checkCredits(false, firebaseUser);
-            await fetchMyVideos(firebaseUser);
-          } else {
-            setCreditsLeft(null);
-            setCreditsError("");
-            setSavedVideos([]);
-          }
-        });
-
-        const result = await getRedirectResult(auth);
-
-        if (result?.user?.email) {
-          setUser(result.user);
-          await checkCredits(false, result.user);
-          await fetchMyVideos(result.user);
-          setMessage("Sikeres belépés. Most már tudsz videót generálni.");
-        }
       } catch (error) {
         console.log(error);
-        setMessage("Google belépési hiba: " + (error?.message || "ismeretlen hiba"));
       }
+
+      unsub = onAuthStateChanged(auth, (firebaseUser) => {
+        setUser(firebaseUser);
+
+        if (firebaseUser?.email) {
+          checkCredits(false, firebaseUser);
+          fetchMyVideos(firebaseUser);
+        } else {
+          setCreditsLeft(null);
+          setCreditsError("");
+          setSavedVideos([]);
+        }
+      });
     }
 
     initAuth();
 
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   useEffect(() => {
     fetchPublicStatus();
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user?.email) {
+          setUser(result.user);
+          checkCredits(false, result.user);
+          fetchMyVideos(result.user);
+          setMessage("Sikeres belépés. Most már tudsz videót generálni.");
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }, []);
 
   useEffect(() => {
@@ -293,7 +296,11 @@ export default function App() {
   async function handleLogin() {
     try {
       setMessage("Google belépés indítása...");
-      const isMobileLike = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      await setPersistence(auth, browserLocalPersistence);
+
+      const isMobileLike =
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobileLike) {
         await signInWithRedirect(auth, googleProvider);
@@ -306,17 +313,11 @@ export default function App() {
         setUser(result.user);
         await checkCredits(false, result.user);
         await fetchMyVideos(result.user);
-        setMessage("Sikeres belépés. Most már tudsz videót generálni.");
+        setMessage("Sikeres belépés.");
       }
     } catch (error) {
       console.log(error);
-
-      try {
-        await signInWithRedirect(auth, googleProvider);
-      } catch (redirectError) {
-        console.log(redirectError);
-        setMessage("Google belépési hiba: " + (redirectError.message || error.message));
-      }
+      setMessage("Google belépési hiba: " + (error?.message || "ismeretlen hiba"));
     }
   }
 
@@ -869,7 +870,7 @@ export default function App() {
                 </button>
 
                 <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
-                  🚧 Korai béta, de valódi AI videót készít.
+                  🚧 Korai béta, valódi AI videót készít. Mobil Google-belépés javítva.
                 </div>
               </div>
             </div>
@@ -959,8 +960,7 @@ export default function App() {
               </button>
 
               <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
-                Működik iPhone-on és Androidon is. Ha appon belüli böngészőből nem indul,
-                nyisd meg Safariban vagy Chrome-ban.
+                Mobilon is működik. A belépés után automatikusan visszahozunk a Képlaborba.
               </p>
             </div>
           )}
