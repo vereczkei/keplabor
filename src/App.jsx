@@ -5,7 +5,6 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
-  getRedirectResult,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -38,6 +37,7 @@ if (
       window.location.hash
   );
 }
+
 
 async function getAuthToken(targetUser = auth.currentUser, forceRefresh = true) {
   const currentUser = targetUser || auth.currentUser;
@@ -224,22 +224,27 @@ export default function App() {
   );
 
   useEffect(() => {
-    let unsub = () => {};
+    fetchPublicStatus();
+
+    let unsubscribe = () => {};
 
     async function initAuth() {
       try {
         await setPersistence(auth, browserLocalPersistence);
       } catch (error) {
-        console.log(error);
+        console.log("Firebase persistence hiba:", error);
       }
 
-      unsub = onAuthStateChanged(auth, (firebaseUser) => {
-        setUser(firebaseUser);
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        console.log("Firebase auth state:", firebaseUser?.email || null);
 
         if (firebaseUser?.email) {
-          checkCredits(false, firebaseUser);
-          fetchMyVideos(firebaseUser);
+          setUser(firebaseUser);
+          await checkCredits(false, firebaseUser);
+          await fetchMyVideos(firebaseUser);
+          setMessage("Sikeres belépés.");
         } else {
+          setUser(null);
           setCreditsLeft(null);
           setCreditsError("");
           setSavedVideos([]);
@@ -249,24 +254,7 @@ export default function App() {
 
     initAuth();
 
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    fetchPublicStatus();
-
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user?.email) {
-          setUser(result.user);
-          checkCredits(false, result.user);
-          fetchMyVideos(result.user);
-          setMessage("Sikeres belépés. Most már tudsz videót generálni.");
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -328,7 +316,7 @@ export default function App() {
         setMessage("Sikeres belépés.");
       }
     } catch (error) {
-      console.log(error);
+      console.log("Google belépési hiba:", error);
       setMessage("Google belépési hiba: " + (error?.message || "ismeretlen hiba"));
     }
   }
@@ -882,7 +870,7 @@ export default function App() {
                 </button>
 
                 <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
-                  🚧 Korai béta, valódi AI videót készít. Mobil Google-belépés javítva.
+                  🚧 Korai béta, valódi AI videót készít. A mobil Google-belépés javítva.
                 </div>
               </div>
             </div>
@@ -972,7 +960,7 @@ export default function App() {
               </button>
 
               <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
-                Mobilon is működik. A belépés után automatikusan visszahozunk a Képlaborba.
+                Mobilon is működik. Belépés után automatikusan visszahozunk a Képlaborba.
               </p>
             </div>
           )}
