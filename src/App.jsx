@@ -780,7 +780,7 @@ export default function App() {
   <img
     src="/by-vereczkei.png"
     alt="by Vereczkei"
-    className="h-25 w-auto"
+    className="h-25 ml-[2px]"
   />
 </div>
           </button>
