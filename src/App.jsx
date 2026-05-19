@@ -774,14 +774,8 @@ export default function App() {
               <Sparkles className="h-6 w-6" />
             </div>
 
-            <div className="flex items-center gap-2 text-2xl font-black tracking-tight md:text-3xl">
-  <span>Képlabor</span>
-
-  <img
-    src="/by-vereczkei.png"
-    alt="by Vereczkei"
-    className="h-10 w-auto md:h-12"
-  />
+            <div className="truncate text-2xl font-black tracking-tight md:text-3xl">
+  Képlabor
 </div>
           </button>
 
