@@ -10,6 +10,20 @@ import {
   setPersistence,
   browserLocalPersistence,
 } from "firebase/auth";
+import {
+  Sparkles,
+  Crown,
+  Heart,
+  Camera,
+  Film,
+  Wand2,
+  Stars,
+  Gem,
+  Flame,
+  Play,
+  ImageIcon,
+  LogOut,
+} from "lucide-react";
 
 const API_URL = "https://vereczkeijanosgabor--video-test-fastapi-app.modal.run";
 
@@ -79,7 +93,7 @@ export default function App() {
   const experiences = [
     {
       id: "luxury",
-      icon: "💎",
+      icon: <Gem className="h-5 w-5" />,
       title: "Luxury",
       subtitle: "Prémium reklámfilm",
       mood: "premium",
@@ -89,7 +103,7 @@ export default function App() {
     },
     {
       id: "love",
-      icon: "❤️",
+      icon: <Heart className="h-5 w-5" />,
       title: "Love",
       subtitle: "Romantikus páros",
       mood: "romantic",
@@ -99,7 +113,7 @@ export default function App() {
     },
     {
       id: "memory",
-      icon: "🕯️",
+      icon: <Stars className="h-5 w-5" />,
       title: "Memory",
       subtitle: "Mozgó emlék",
       mood: "emotional",
@@ -109,7 +123,7 @@ export default function App() {
     },
     {
       id: "fantasy",
-      icon: "🌌",
+      icon: <Wand2 className="h-5 w-5" />,
       title: "Fantasy",
       subtitle: "Varázslatos világ",
       mood: "dreamy",
@@ -119,7 +133,7 @@ export default function App() {
     },
     {
       id: "celebrity",
-      icon: "📸",
+      icon: <Camera className="h-5 w-5" />,
       title: "Celebrity",
       subtitle: "Glamour hatás",
       mood: "premium",
@@ -129,7 +143,7 @@ export default function App() {
     },
     {
       id: "cinematic",
-      icon: "🎬",
+      icon: <Film className="h-5 w-5" />,
       title: "Cinematic",
       subtitle: "Filmes mozi hatás",
       mood: "dramatic",
@@ -140,12 +154,12 @@ export default function App() {
   ];
 
   const moods = [
-    { id: "premium", icon: "💼", title: "Premium" },
-    { id: "romantic", icon: "🌹", title: "Romantic" },
-    { id: "emotional", icon: "🕯️", title: "Emotional" },
-    { id: "dreamy", icon: "✨", title: "Dreamy" },
-    { id: "dramatic", icon: "🌑", title: "Dramatic" },
-    { id: "viral", icon: "⚡", title: "Viral" },
+    { id: "premium", icon: <Crown className="h-4 w-4" />, title: "Premium" },
+    { id: "romantic", icon: <Heart className="h-4 w-4" />, title: "Romantic" },
+    { id: "emotional", icon: <Stars className="h-5 w-5" />, title: "Emotional" },
+    { id: "dreamy", icon: <Sparkles className="h-4 w-4" />, title: "Dreamy" },
+    { id: "dramatic", icon: <Film className="h-4 w-4" />, title: "Dramatic" },
+    { id: "viral", icon: <Flame className="h-4 w-4" />, title: "Viral" },
   ];
 
   const templates = [
@@ -691,7 +705,9 @@ export default function App() {
       <div className="absolute inset-0 bg-gradient-to-br from-violet-700/25 via-black to-cyan-500/20" />
       <div className="absolute h-44 w-44 animate-pulse rounded-full bg-cyan-400/20 blur-3xl" />
 
-      <div className="relative z-10 mb-4 text-5xl">🎬</div>
+      <div className="relative z-10 mb-4 flex h-20 w-20 items-center justify-center rounded-[28px] border border-white/10 bg-white/10 text-cyan-100 shadow-2xl shadow-cyan-950/30 backdrop-blur">
+        <Film className="h-10 w-10" />
+      </div>
 
       <div className="relative z-10 mb-2 text-xl font-black">
         AI videó készül
@@ -754,8 +770,8 @@ export default function App() {
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             className="flex min-w-0 items-center gap-3"
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-xl shadow-lg shadow-violet-900/40">
-              ✦
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-white shadow-lg shadow-violet-900/40">
+              <Sparkles className="h-6 w-6" />
             </div>
 
             <div className="min-w-0 text-left">
@@ -774,16 +790,22 @@ export default function App() {
 
               <button
                 onClick={handleLogout}
-                className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 transition hover:bg-white/10"
               >
+                <LogOut className="h-3.5 w-3.5" />
                 Kilépés
               </button>
             </div>
           ) : (
             <button
               onClick={handleLogin}
-              className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-black shadow-lg shadow-violet-900/30"
+              className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-black shadow-lg shadow-violet-900/30 transition active:scale-[0.98]"
             >
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                className="h-4 w-4"
+              />
               Folytatás Google-fiókkal
             </button>
           )}
@@ -945,7 +967,11 @@ export default function App() {
                 onClick={handleLogin}
                 className="mb-5 flex w-full items-center justify-center gap-3 rounded-3xl bg-white px-5 py-4 text-lg font-black text-black shadow-lg shadow-violet-900/20"
               >
-                <span className="text-2xl">G</span>
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt="Google"
+                  className="h-5 w-5"
+                />
                 Folytatás Google-fiókkal
               </button>
 
@@ -986,8 +1012,8 @@ export default function App() {
                     />
                   ) : (
                     <>
-                      <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-600 to-cyan-500 text-3xl shadow-lg shadow-violet-900/40">
-                        📸
+                      <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-violet-600 to-cyan-500 text-white shadow-lg shadow-violet-900/40">
+                        <ImageIcon className="h-8 w-8" />
                       </div>
 
                       <div className="mb-1 text-xl font-black">
@@ -1012,13 +1038,19 @@ export default function App() {
                     <button
                       key={item.id}
                       onClick={() => selectExperience(item)}
-                      className={`rounded-2xl border p-3 text-left transition ${
+                      className={`group rounded-3xl border p-3 text-left backdrop-blur-xl transition-all duration-300 active:scale-[0.98] md:hover:scale-[1.02] ${
                         category === item.id
-                          ? "border-cyan-400 bg-cyan-400/10"
-                          : "border-white/10 bg-black/30"
+                          ? "border-cyan-400/70 bg-cyan-400/10 shadow-lg shadow-cyan-500/10"
+                          : "border-white/10 bg-white/[0.04] hover:border-cyan-400/40 hover:bg-white/[0.07]"
                       }`}
                     >
-                      <div className="text-lg">{item.icon}</div>
+                      <div className={`mb-2 flex h-10 w-10 items-center justify-center rounded-2xl border transition ${
+                        category === item.id
+                          ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100"
+                          : "border-white/10 bg-black/25 text-zinc-200 group-hover:text-cyan-100"
+                      }`}>
+                        {item.icon}
+                      </div>
                       <div className="text-sm font-black">{item.title}</div>
                       <div className="truncate text-[11px] text-zinc-400">
                         {item.subtitle}
@@ -1083,13 +1115,14 @@ export default function App() {
                         <button
                           key={item.id}
                           onClick={() => setMood(item.id)}
-                          className={`rounded-xl border px-2 py-2 text-xs font-bold ${
+                          className={`flex items-center justify-center gap-1.5 rounded-2xl border px-2 py-2 text-xs font-bold transition ${
                             mood === item.id
-                              ? "border-fuchsia-300 bg-fuchsia-400/10"
-                              : "border-white/10 bg-black/30"
+                              ? "border-fuchsia-300/70 bg-fuchsia-400/10 text-fuchsia-100 shadow-lg shadow-fuchsia-500/10"
+                              : "border-white/10 bg-white/[0.04] text-zinc-300 hover:border-fuchsia-300/30 hover:bg-white/[0.07]"
                           }`}
                         >
-                          {item.icon} {item.title}
+                          {item.icon}
+                          <span>{item.title}</span>
                         </button>
                       ))}
                     </div>
@@ -1105,10 +1138,10 @@ export default function App() {
                         <button
                           key={item.id}
                           onClick={() => setTemplate(item.id)}
-                          className={`rounded-xl border px-3 py-2 text-xs font-bold ${
+                          className={`rounded-2xl border px-3 py-2 text-xs font-bold transition ${
                             template === item.id
-                              ? "border-violet-300 bg-violet-400/10"
-                              : "border-white/10 bg-black/30"
+                              ? "border-violet-300/70 bg-violet-400/10 text-violet-100 shadow-lg shadow-violet-500/10"
+                              : "border-white/10 bg-white/[0.04] text-zinc-300 hover:border-violet-300/30 hover:bg-white/[0.07]"
                           }`}
                         >
                           {item.title}
@@ -1128,7 +1161,12 @@ export default function App() {
                   ? "🎬 AI jelenet készül..."
                   : !salesEnabled
                     ? "Hamarosan újra elérhető"
-                    : `✨ Generálás — ${currentVideoMode?.label}`}
+                    : (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <Sparkles className="h-5 w-5" />
+                        Generálás — {currentVideoMode?.label}
+                      </span>
+                    )}
               </button>
 
               {message && (
@@ -1146,8 +1184,11 @@ export default function App() {
                       Kiválasztott élmény
                     </div>
 
-                    <div className="text-2xl font-black">
-                      {currentExperience?.icon} {currentExperience?.title}
+                    <div className="flex items-center gap-2 text-2xl font-black">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">
+                        {currentExperience?.icon}
+                      </span>
+                      {currentExperience?.title}
                     </div>
                   </div>
 
@@ -1174,7 +1215,9 @@ export default function App() {
                     />
                   ) : previewError ? (
                     <div className="px-6 text-center">
-                      <div className="mb-3 text-5xl">⚠️</div>
+                      <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-3xl border border-red-300/20 bg-red-400/10 text-red-100">
+                        <Flame className="h-8 w-8" />
+                      </div>
 
                       <div className="mb-2 text-xl font-black text-red-200">
                         Nem sikerült
