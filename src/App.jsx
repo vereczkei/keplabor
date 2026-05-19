@@ -289,7 +289,7 @@ export default function App() {
       const isMobileLike = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobileLike) {
-        await signInWithRedirect(auth, googleProvider);
+        await signInWithRedirect (auth, googleProvider);
         return;
       }
 
