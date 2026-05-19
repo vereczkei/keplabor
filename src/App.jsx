@@ -27,6 +27,18 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 
+if (
+  typeof window !== "undefined" &&
+  window.location.hostname === "keplabor.hu"
+) {
+  window.location.replace(
+    "https://www.keplabor.hu" +
+      window.location.pathname +
+      window.location.search +
+      window.location.hash
+  );
+}
+
 async function getAuthToken(targetUser = auth.currentUser, forceRefresh = true) {
   const currentUser = targetUser || auth.currentUser;
 
