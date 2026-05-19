@@ -26,18 +26,6 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const googleProvider = new GoogleAuthProvider();
 
-if (
-  typeof window !== "undefined" &&
-  window.location.hostname === "keplabor.hu"
-) {
-  window.location.replace(
-    "https://www.keplabor.hu" +
-      window.location.pathname +
-      window.location.search +
-      window.location.hash
-  );
-}
-
 
 async function getAuthToken(targetUser = auth.currentUser, forceRefresh = true) {
   const currentUser = targetUser || auth.currentUser;
@@ -299,14 +287,6 @@ export default function App() {
 
       await setPersistence(auth, browserLocalPersistence);
 
-      const isMobileLike =
-        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      if (isMobileLike) {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      }
-
       const result = await signInWithPopup(auth, googleProvider);
 
       if (result.user?.email) {
@@ -316,8 +296,18 @@ export default function App() {
         setMessage("Sikeres belépés.");
       }
     } catch (error) {
-      console.log("Google belépési hiba:", error);
-      setMessage("Google belépési hiba: " + (error?.message || "ismeretlen hiba"));
+      console.log("Popup login hiba:", error);
+
+      try {
+        setMessage("Google belépés átirányítással...");
+        await signInWithRedirect(auth, googleProvider);
+      } catch (redirectError) {
+        console.log("Redirect login hiba:", redirectError);
+        setMessage(
+          "Google belépési hiba: " +
+            (redirectError?.message || error?.message || "ismeretlen hiba")
+        );
+      }
     }
   }
 
@@ -870,7 +860,7 @@ export default function App() {
                 </button>
 
                 <div className="mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm text-yellow-100">
-                  🚧 Korai béta, valódi AI videót készít. A mobil Google-belépés javítva.
+                  🚧 Korai béta, de valódi AI videót készít.
                 </div>
               </div>
             </div>
@@ -960,7 +950,7 @@ export default function App() {
               </button>
 
               <p className="-mt-2 mb-5 text-center text-xs text-zinc-500">
-                Mobilon is működik. Belépés után automatikusan visszahozunk a Képlaborba.
+                Működik iPhone-on és Androidon is. Ha appon belüli böngészőből nem indul, nyisd meg Safariban vagy Chrome-ban.
               </p>
             </div>
           )}
