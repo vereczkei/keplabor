@@ -282,6 +282,20 @@ export default function App() {
 
     return () => clearInterval(timer);
   }, [loading]);
+  useEffect(() => {
+  setPersistence(auth, browserLocalPersistence);
+
+  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    if (firebaseUser?.email) {
+      setUser(firebaseUser);
+      await checkCredits(false, firebaseUser);
+      await fetchMyVideos(firebaseUser);
+      setMessage("Sikeres belépés.");
+    }
+  });
+
+  return () => unsubscribe();
+}, []);
 useEffect(() => {
   async function finishRedirectLogin() {
     try {
@@ -302,8 +316,6 @@ useEffect(() => {
   finishRedirectLogin();
 }, []);
 
-async function handleLogin() {
-  
   async function handleLogin() {
     try {
       setMessage("Google belépés indítása...");
