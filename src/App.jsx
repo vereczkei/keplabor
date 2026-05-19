@@ -774,14 +774,15 @@ export default function App() {
               <Sparkles className="h-6 w-6" />
             </div>
 
-            <div className="min-w-0 text-left">
-              <div className="truncate text-2xl font-black tracking-tight md:text-3xl">
-                Képlabor
-              </div>
-              <div className="hidden text-xs text-zinc-500 sm:block">
-                magyar AI videólabor
-              </div>
-            </div>
+            <div className="flex items-center gap-3 text-2xl font-black tracking-tight md:text-3xl">
+  <span>Képlabor</span>
+
+  <img
+    src="/by-vereczkei.png"
+    alt="by Vereczkei"
+    className="h-25 w-auto"
+  />
+</div>
           </button>
 
           {user ? (
