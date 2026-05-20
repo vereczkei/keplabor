@@ -1470,11 +1470,6 @@ export default function App() {
               </p>
 
               <p>Kapcsolat: vereczkeijanosgabor@gmail.com</p>
-
-              <div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-4 text-yellow-100">
-                Ez egy ideiglenes, induló tájékoztató. Éles, nagyobb forgalmú működés előtt
-                érdemes hivatalos ÁSZF-et, adatkezelési tájékoztatót és impresszumot készíteni.
-              </div>
             </div>
           </div>
         </div>
